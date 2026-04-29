@@ -1,0 +1,54 @@
+{
+    "conditions": [
+        ["new", "Uusi"],
+        ["like-new", "Uudenveroinen"],
+        ["good", "Hyvä"],
+        ["acceptable", "Tyydyttävä"],
+        ["weak", "Heikko"]
+    ],
+    "packagings": [
+        ["standard", "standard"],
+        ["steelbook", "steelbook"],
+        ["digibook", "digibook"],
+        ["digipack", "digipack"],
+        ["special", "special"]
+    ],
+    "subtitles": [
+        ["suomi", "suomi"],
+        ["englanti", "englanti"],
+        ["no-text", "ei tekstitystä"]
+    ],
+    "countries": [
+        ["Australia", "Australia"],
+        ["Espanja", "Espanja"],
+        ["Italia", "Italia"],
+        ["Kanada", "Kanada"],
+        ["Pohjoismaat", "Pohjoismaat"],
+        ["Ranska", "Ranska"],
+        ["Ruotsi", "Ruotsi"],
+        ["Saksa", "Saksa"],
+        ["Suomi", "Suomi"],
+        ["UK", "UK"],
+        ["US", "US"]
+    ],
+    "regions": [
+        ["region free", "region free"],
+        ["region 1", "region 1"],
+        ["region 2", "region 2"],
+        ["region A", "region A"],
+        ["region B", "region B"]
+    ],
+    "shipping": [
+        ["3.80", "Helposti-kuori C5"],
+        ["5.90", "Pikkupaketti"],
+        ["6.90", "S-paketti"],
+        ["10.90", "M-paketti"],
+        ["5.40", "Huuto-paketti XXS"],
+        ["6.40", "Huuto-paketti S"]
+    ],
+    "media_formats": [
+        ["DVD", "DVD"],
+        ["Blu-ray", "Blu-ray"],
+        ["4K Ultra HD", "4K Ultra HD"]
+    ]
+}

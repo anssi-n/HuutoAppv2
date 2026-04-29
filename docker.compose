@@ -1,0 +1,24 @@
+services:
+  database:    
+    image: postgres:latest
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_PASSWORD: huutoapp
+      POSTGRES_USER: huutoapp
+      POSTGRES_DB: huutoapp
+    volumes:
+      - postgres-data:/var/lib/postgresql 
+
+  cache:
+    image: redis:latest
+    restart: always
+    ports:
+      - "6379:6379"
+    command: redis-server --save 20 1 --loglevel warning --requirepass teevee888
+    volumes:
+      - redis-cache:/data
+
+volumes: 
+  postgres-data:
+  redis-cache:
