@@ -251,7 +251,9 @@ class ItemResponse(BaseModel):
     def closed(self) -> bool | None:
         if self.huuto_id is None or self.huuto_closing_time is None:
             return None
-        return self.huuto_closing_time < datetime.now(UTC)
+        print(self.huuto_closing_time)
+        print(datetime.now().astimezone())
+        return self.huuto_closing_time < datetime.now(UTC).astimezone()
 
     @computed_field # type: ignore[prop-decorator]
     @property 

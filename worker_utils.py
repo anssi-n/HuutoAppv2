@@ -158,7 +158,7 @@ def update_status(id: int, status: common_types.TaskStatus, *, details: dict[str
 def save_item( item_id: int, *, 
                huuto_id: int | None = None,
                huuto_image_ids: dict[int,int] | None = None, 
-               end_time: str | None = None,
+               end_time: datetime | None = None,
                keywords: str | None = None) -> items_model.HuutoItem:
     with Session(sync_engine) as session:
         result = session.execute(select(items_model.HuutoItem).
@@ -167,7 +167,8 @@ def save_item( item_id: int, *,
         item = result.scalars().first()
         if item is not None:
             item.huuto_id = huuto_id if huuto_id is not None else item.huuto_id
-            item.huuto_closing_time = datetime.fromisoformat(end_time) if end_time is not None else item.huuto_closing_time
+            # item.huuto_closing_time = datetime.fromisoformat(end_time).astimezone() if end_time is not None else item.huuto_closing_time
+            item.huuto_closing_time = end_time if end_time is not None else item.huuto_closing_time
             item.keywords = keywords if keywords is not None else item.keywords
             if huuto_image_ids is not None:
                 for image in item.images:
@@ -221,9 +222,9 @@ def get_item(item_id: int) -> items_model.HuutoItem:
             raise ItemNotFound(f"No item found with id {item_id}", item_id)
         return item
 
-def generate_end_time() -> str:
+def generate_end_time() -> tuple[datetime, str]:
 
-    dt = datetime.now()
+    dt = datetime.now(UTC)
     dt_new = (dt.replace(day=1) + timedelta(days=32)
                   ).replace(day=1).replace(hour=12, minute=00, second=00)
 
@@ -233,4 +234,4 @@ def generate_end_time() -> str:
 
     end_date = f"{str(dt_new.year)}-{str(dt_new.month).zfill(2)}-{str(dt_new.day).zfill(2)} 12:00:00"
     logger.info(f"Ending date and time for the new item: {end_date}")
-    return end_date
+    return dt_new, end_date

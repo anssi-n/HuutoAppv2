@@ -3,6 +3,45 @@ import logging.config
 import json
 from threading import Thread
 from config import settings
+from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+
+class HttpxRedactFilter(logging.Filter):
+    SENSITIVE_KEYS = {"username", "password", "passwd", "secret", "token", "api_key", "auth"}
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if not record.args or len(record.args) < 2:
+            return True
+
+        url_obj = list(record.args)[1]
+
+        try:
+            url_str = str(url_obj)
+
+            if "?" not in url_str:
+                return True
+
+            parsed = urlparse(url_str)
+            if parsed.query:
+                params = parse_qs(parsed.query, keep_blank_values=True)
+
+                redacted = False
+                for key in self.SENSITIVE_KEYS:
+                    if key in params:
+                        params[key] = ["REDACTED"]
+                        redacted = True
+
+                if redacted:
+                    new_query = urlencode(params, doseq=True)
+                    redacted_url = urlunparse(parsed._replace(query=new_query))
+
+                    args_list = list(record.args)
+                    args_list[1] = redacted_url
+                    record.args = tuple(args_list)
+
+        except Exception:
+            pass
+
+        return True
 
 def configure_logger():
     with open("logger/logging_config.json","r",encoding="utf-8") as f:

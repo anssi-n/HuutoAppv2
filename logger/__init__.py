@@ -1,1 +1,1 @@
-from .logger import logger, LoggingConfigListener # noqa: F401
+from .logger import logger, LoggingConfigListener, HttpxRedactFilter # noqa: F401

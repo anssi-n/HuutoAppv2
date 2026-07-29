@@ -1,6 +1,7 @@
 import redis
 from config import settings
-from logger import logger, LoggingConfigListener
+from logger import logger, LoggingConfigListener, HttpxRedactFilter
+import logging
 from uuid import uuid4
 import sys
 import time
@@ -23,12 +24,11 @@ TASK_COUNT = Counter(
 )
 
 QUEUE_LENGTH = Gauge(
-    "task_queue_lenght",
+    "task_queue_length",
     "Length of the task queue",
     ["app_name", "queue_name"]
 )
 
-g = Gauge('my_inprogress_requests', 'Description of gauge')
 @task_latency
 def relist_all_items(queue: redis.Redis, message: huutoapp_queue_schema.QueueMessage) -> bool:
     items = get_closed_items()
@@ -60,7 +60,7 @@ def relist_item(_: redis.Redis, message: huutoapp_queue_schema.QueueMessage) -> 
     if "status" in huuto_data and huuto_data["status"] == "open":
         logger.error(f"Item {item.huuto_id} is still active in Huuto.net. Unable to relist.")
         details = {"details": {"retries": {f"{message.retries}": {"status": common_types.TaskStatus.success, "message": f"Item {item.huuto_id} is still active in Huuto.net. Unable to relist.", "item": items_schema.ItemResponse.model_validate(item).model_dump(exclude={'created_at','huuto_closing_time'})}}}}
-        update_status(message.task.log_id, common_types.TaskStatus.success, end_time=datetime.datetime.now(), details=details)
+        update_status(message.task.log_id, common_types.TaskStatus.success, end_time=datetime.datetime.now(datetime.UTC), details=details)
         return
 
     full_item_description = f"<p>{item.description}</p>"
@@ -74,12 +74,12 @@ def relist_item(_: redis.Redis, message: huutoapp_queue_schema.QueueMessage) -> 
 
     try:
         with HuutoBot() as bot:
-            closing_time = generate_end_time()
+            closing_time_datetime, closing_time_str = generate_end_time()
             new_huuto_id = bot.add_item(huutonet_schema.HuutoItem(original_id=item.huuto_id))
-            bot.edit_item(new_huuto_id, huutonet_schema.HuutoItem(closing_time=closing_time, description=full_item_description))
+            bot.edit_item(new_huuto_id, huutonet_schema.HuutoItem(closing_time=closing_time_str, description=full_item_description))
             bot.edit_item(new_huuto_id, huutonet_schema.HuutoItem(status=huutonet_schema.Status.PREVIEW))
             bot.edit_item(new_huuto_id, huutonet_schema.HuutoItem(status=huutonet_schema.Status.PUBLISHED))
-            item = save_item(item.id, huuto_id=new_huuto_id, end_time=str(closing_time))
+            item = save_item(item.id, huuto_id=new_huuto_id, end_time=closing_time_datetime)
     except (HuutoAuthenticationFailed, HuutoItemError) as err:
         if parent_id is not None:
             err.parent_log_id = parent_log_id
@@ -111,6 +111,8 @@ def add_item(_: redis.Redis, message: huutoapp_queue_schema.QueueMessage) -> Non
         item = save_item(item.id, keywords=kws)
 
     # Create HuutoItem instance from SQL Item object
+    closing_time_datetime, closing_time_str = generate_end_time()
+
     huuto_item = huutonet_schema.HuutoItem(
         title = item.title,
         description= full_item_description,
@@ -121,7 +123,7 @@ def add_item(_: redis.Redis, message: huutoapp_queue_schema.QueueMessage) -> Non
         offers_allowed = item.offers_allowed,
         postal_code = settings.postal_code,
         sale_method = huutonet_schema.SalesMethod.BUY_NOW,
-        closing_time = generate_end_time(),
+        closing_time = closing_time_str,
         payment_methods = [huutonet_schema.PaymentMethod.WIRE_TRANSFER, huutonet_schema.PaymentMethod.CASH, huutonet_schema.PaymentMethod.MOBILE_PAY],
         payment_terms = settings.payment_terms,
         delivery_methods = [huutonet_schema.DeliveryMethod.PICKUP, huutonet_schema.DeliveryMethod.SHIPMENT],
@@ -133,7 +135,7 @@ def add_item(_: redis.Redis, message: huutoapp_queue_schema.QueueMessage) -> Non
         images = { image.id: bot.add_image_to_item(huuto_id, image.filename) for image in item.images if image.file_type == "fullsize"}
         print(images)
         bot.edit_item(huuto_id, huutonet_schema.HuutoItem(status=huutonet_schema.Status.PUBLISHED))
-        item = save_item(item.id, huuto_id=huuto_id, huuto_image_ids=images, end_time=str(huuto_item.closing_time))
+        item = save_item(item.id, huuto_id=huuto_id, huuto_image_ids=images, end_time=closing_time_datetime)
 
         details = {"details": {"retries": {f"{message.retries}": {"status": common_types.TaskStatus.success, "item": items_schema.ItemResponse.model_validate(item).model_dump(exclude={'created_at','huuto_closing_time'})}}}}
         update_status(message.task.log_id, common_types.TaskStatus.success, end_time=datetime.datetime.now(), details=details)
@@ -256,6 +258,7 @@ def main(queue: redis.Redis) -> None:
 
 if __name__ == "__main__":
     LoggingConfigListener.start_listener()
+    logging.getLogger("httpx").addFilter(HttpxRedactFilter())
 
     try:
         queue = get_redis()
