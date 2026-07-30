@@ -252,8 +252,8 @@ def main(queue: redis.Redis) -> None:
  
         if message is not None:
             _, message_json = message # type: ignore
-            logger.debug(f"Raw message from queue: {message_json}")
-            process_message(queue, message_json)
+            logger.debug(f"Raw message from queue: {message_json}") # type: ignore
+            process_message(queue, message_json) # type: ignore
             time.sleep(1)
 
 if __name__ == "__main__":
