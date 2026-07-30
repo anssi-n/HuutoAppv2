@@ -13,8 +13,14 @@ class RedisClient:
         self.pool = ConnectionPool.from_url(
             REDIS_URL,
             max_connections=50,
-            decode_responses=True
+            decode_responses=True,
+            socket_timeout=20,           # Needed after redis library update from  7.4.0 to 8.0.1
+            socket_connect_timeout=10,
+            socket_keepalive=True,
+            health_check_interval=30,    # Very important in K8s
+            retry_on_timeout=True           
         )
+        
         self.client = Redis(connection_pool=self.pool)
 
     async def disconnect(self) -> None:

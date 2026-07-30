@@ -243,7 +243,7 @@ def main(queue: redis.Redis) -> None:
 
     logger.info("Starting main loop")
     while True:
-        message = queue.brpop(settings.redis_queue_name, timeout=5) # type: ignore
+        message = queue.brpop(settings.redis_queue_name, timeout=30) # type: ignore # Increase from 5 to 30 after redis library update from  7.4.0 to 8.0.1
         q_len = queue.llen(settings.redis_queue_name)
         QUEUE_LENGTH.labels(
             app_name="huutoworker",
