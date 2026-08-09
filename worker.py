@@ -54,7 +54,7 @@ def relist_item(_: redis.Redis, message: huutoapp_queue_schema.QueueMessage) -> 
     if item is None:
        raise  ItemNotFound(f"No item found with id {message.task.id}")
     if item.huuto_id is None:
-        raise ItemNotFound(f"Item {item.id} is not yet published to Huuto.net. Unable to relist.")
+       raise ItemNotFound(f"Item {item.id} is not yet published to Huuto.net. Unable to relist.")
 
     huuto_data = get_huuto_data(item.huuto_id)
     if "status" in huuto_data and huuto_data["status"] == "open":

@@ -34,4 +34,3 @@ app.include_router(config_route.router, prefix="/api/v1/config", tags=["config"]
 app.include_router(task_log_route.router, prefix="/api/v1/task_log", tags=["task_log"])
 app.include_router(health_route.router, prefix="/health", tags=["health"])
 app.include_router(ui_route.router, prefix="", tags=["ui"])
-
