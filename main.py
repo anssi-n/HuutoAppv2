@@ -8,6 +8,7 @@ from redis_queue import redis_client # type: ignore
 from logger import LoggingConfigListener
 from prometheus_middleware import MetricsMiddleware
 
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     # Startup
