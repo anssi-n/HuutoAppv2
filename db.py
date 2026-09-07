@@ -7,6 +7,7 @@ from config import settings
 from pathlib import Path
 import aiofiles
 
+
 class Base(DeclarativeBase):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
 CREDS_DIR = Path(settings.database_credential_dir)
