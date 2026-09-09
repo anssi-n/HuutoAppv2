@@ -1,0 +1,69 @@
+name: Build, Push, and Sign Docker Images
+
+on:
+    push:
+        # Trigger only when tags matching v* are pushed
+        tags:
+            - "v*"
+
+jobs:
+    build-and-sign:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Install Cosign
+              uses: sigstore/cosign-installer@v3.5.0
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Log in to Docker Hub
+              uses: docker/login-action@v3
+              with:
+                  username: ${{ secrets.DOCKERHUB_USERNAME }}
+                  password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+            - name: Build and Push HuutoApi
+              id: docker_build_huutoapi
+              uses: docker/build-push-action@v6
+              with:
+                  context: .
+                  file: ./Dockerfile.huutoapi
+                  push: true
+                  tags: |
+                      ${{ secrets.DOCKERHUB_USERNAME }}/huutoapi:${{ github.ref_name }}
+                      ${{ secrets.DOCKERHUB_USERNAME }}/huutoapi:latest
+
+            - name: Sign HuutoApi Image
+              run: |
+                  cosign sign --key env://COSIGN_PRIVATE_KEY \
+                      --new-bundle-format=false \
+                      --use-signing-config=false \
+                      ${{ secrets.DOCKERHUB_USERNAME }}/huutoapi@${{ steps.docker_build_huutoapi.outputs.digest }} --yes
+              env:
+                  COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+                  COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+
+            - name: Build and Push HuutoWorker
+              id: docker_build_huutoworker
+              uses: docker/build-push-action@v6
+              with:
+                  context: .
+                  file: ./Dockerfile.huutoworker
+                  push: true
+                  tags: |
+                      ${{ secrets.DOCKERHUB_USERNAME }}/huutoworker:${{ github.ref_name }}
+                      ${{ secrets.DOCKERHUB_USERNAME }}/huutoworker:latest
+
+            - name: Sign HuutoWorker Image
+              run: |
+                  cosign sign --key env://COSIGN_PRIVATE_KEY \
+                      --new-bundle-format=false \
+                      --use-signing-config=false \
+                      ${{ secrets.DOCKERHUB_USERNAME }}/huutoworker@${{ steps.docker_build_huutoworker.outputs.digest }} --yes
+              env:
+                  COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+                  COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
