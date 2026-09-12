@@ -75,6 +75,38 @@
             flex-wrap: wrap;
         }
         .toolbar form { display: flex; gap: 0.5rem; align-items: center; }
+        .toolbar .filters { flex-wrap: wrap; }
+        .toolbar .filters label {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.8rem;
+            color: var(--muted);
+        }
+        .toolbar .filters select {
+            max-width: 10rem;
+            padding: 0.35rem 0.4rem;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: #fff;
+            color: #222;
+            font: inherit;
+        }
+        .toolbar .filters select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+        .btn-reset {
+            padding: 0.4rem 0.8rem;
+            border: 1px solid var(--border);
+            background: #fff;
+            color: var(--muted);
+            border-radius: 4px;
+            font-size: 0.85rem;
+            text-decoration: none;
+            white-space: nowrap;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn-reset:hover { background: #f0f2f5; color: #222; }
+        .btn-reset:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
         input[type="search"] {
             padding: 0.4rem 0.6rem;
             border: 1px solid var(--border);
@@ -140,7 +172,8 @@
         .badge.open { background: #e8f0fe; color: #1a56c9; }
         .badge.draft { background: #f1f3f4; color: #5f6368; }
         .actions { white-space: nowrap; }
-        .btn-delete {
+        .actions .btn-icon:not(:last-child) { margin-right: 0.5rem; }
+        .btn-icon, .btn-delete {
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -152,6 +185,9 @@
             touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
         }
+        .btn-icon img { display: block; }
+        .btn-icon:hover { background: #f0f2f5; border-color: var(--border); }
+        .btn-icon:active { background: #e4e7ec; }
         .btn-delete img { display: block; }
         .btn-delete:hover { background: #fdecea; border-color: #c0392b; }
         .btn-delete:active { background: #f8d7d5; }
@@ -197,6 +233,56 @@
         #delete-status:empty, #publish-status:empty { display: none; }
         #delete-status, #publish-status { margin: 0 0 1rem; }
         #publish-status.error { color: #c0392b; }
+        #details-dialog { max-width: 56rem; width: calc(100% - 2rem); }
+        #details-dialog .close-row {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 0.25rem;
+        }
+        #details-dialog > form { margin: 0; padding: 0; }
+        #details-content {
+            display: grid;
+            grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+            gap: 1.25rem;
+            align-items: start;
+        }
+        #details-preview {
+            display: flex;
+            justify-content: center;
+            position: sticky;
+            top: 0;
+        }
+        #details-preview img {
+            max-width: 100%;
+            max-height: 28rem;
+            object-fit: contain;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: #f6f7f9;
+        }
+        #details-dialog h2 { margin-top: 0; }
+        #details-info .desc { white-space: pre-wrap; }
+        #details-info dd { margin: 0 0 0.5rem 0; }
+        #details-info dt { font-weight: 600; font-size: 0.8rem; color: var(--muted); }
+        #details-info dt:not(:first-child) { margin-top: 0.75rem; }
+        #details-info .price-big { font-size: 1.1rem; font-weight: 600; }
+        #details-info .stripe {
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.75rem 1rem;
+            margin-top: 0.25rem;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem 1rem;
+        }
+        #details-info .stripe dt { margin-top: 0; }
+        @media (max-width: 40rem) {
+            #details-info .stripe { grid-template-columns: 1fr; }
+            #details-content { grid-template-columns: 1fr; }
+            #details-preview { position: static; }
+        }
+        #details-error:empty { display: none; }
+        #details-error { color: #c0392b; margin: 0.5rem 0; }
         dialog {
             border: 1px solid var(--border);
             border-radius: 8px;
@@ -326,16 +412,55 @@
                 {% endif %}
                 <input type="hidden" name="limit" value="{{ limit }}">
                 <input type="hidden" name="order_by" value="{{ order_by }}">
+                {% if mf_filter %}<input type="hidden" name="media_format_id" value="{{ mf_filter }}">{% endif %}
+                {% if genre_filter %}<input type="hidden" name="genre_id" value="{{ genre_filter }}">{% endif %}
+                {% if cond_filter %}<input type="hidden" name="condition_id" value="{{ cond_filter }}">{% endif %}
                 <label class="visually-hidden" for="search-input">Search items</label>
                 <input type="search" id="search-input" name="search" value="{{ search }}"
                        placeholder="Search items (e.g. Blade Runner)…" autocomplete="off">
                 <button type="submit">Search</button>
+            </form>
+
+            <form method="get" action="/" class="filters">
+                <input type="hidden" name="limit" value="{{ limit }}">
+                <input type="hidden" name="order_by" value="{{ order_by }}">
+                {% if search %}<input type="hidden" name="search" value="{{ search }}">{% endif %}
+                <label for="filter-format">Format
+                    <select id="filter-format" name="media_format_id">
+                        <option value="">All formats</option>
+                        {% for opt in config.media_format %}
+                            <option value="{{ opt.id }}"{% if mf_filter == opt.id|string %} selected{% endif %}>{{ opt.label }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label for="filter-genre">Genre
+                    <select id="filter-genre" name="genre_id">
+                        <option value="">All genres</option>
+                        {% for opt in config.genre %}
+                            <option value="{{ opt.id }}" data-format="{{ opt.media_format_id if opt.media_format_id else '' }}"{% if genre_filter == opt.id|string %} selected{% endif %}>{{ opt.label }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label for="filter-condition">Condition
+                    <select id="filter-condition" name="condition_id">
+                        <option value="">All conditions</option>
+                        {% for opt in config.condition %}
+                            <option value="{{ opt.id }}"{% if cond_filter == opt.id|string %} selected{% endif %}>{{ opt.label }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <button type="submit">Filter</button>
+                {% if mf_filter or genre_filter or cond_filter %}
+                    <a class="btn-reset" href="/?limit={{ limit }}&order_by={{ order_by }}{% if search %}&search={{ search }}{% endif %}">Reset filters</a>
+                {% endif %}
             </form>
             <span class="muted">{{ total }} item{% if total != 1 %}s{% endif %}</span>
             <a class="btn-add" href="/new">Add Item</a>
         </div>
 
         <p id="delete-status" role="status" aria-live="polite"></p>
+
+        {% macro filter_qs() -%}{% if mf_filter %}&media_format_id={{ mf_filter }}{% endif %}{% if genre_filter %}&genre_id={{ genre_filter }}{% endif %}{% if cond_filter %}&condition_id={{ cond_filter }}{% endif %}{%- endmacro %}
 
         {% macro sort_header(col, label, extra_class="") -%}
             {% set rule = order_by.split(",")[0] %}
@@ -344,7 +469,7 @@
             {% set next_order = ("-" ~ col) if (current_col == col and not descending) else col %}
             {% set arrow = (" ▼" if descending else " ▲") if current_col == col else "" %}
             <th scope="col" class="{{ extra_class }}"{% if current_col == col %} aria-sort="{{ "descending" if descending else "ascending" }}"{% endif %}>
-                <a class="sort-link" href="/?skip=0&limit={{ limit }}&search={{ search }}&order_by={{ next_order }}">{{ label }}<span class="sort-arrow">{{ arrow }}</span></a>
+                <a class="sort-link" href="/?skip=0&limit={{ limit }}&search={{ search }}&order_by={{ next_order }}{{ filter_qs() }}">{{ label }}<span class="sort-arrow">{{ arrow }}</span></a>
             </th>
         {%- endmacro %}
 
@@ -354,7 +479,6 @@
             <thead>
                 <tr>
                     <th scope="col"><span class="visually-hidden">Image</span></th>
-                    <th scope="col" class="num">ID</th>
                     {{ sort_header("title", "Title") }}
                     {{ sort_header("price", "Price", "num") }}
                     {{ sort_header("format", "Format") }}
@@ -376,7 +500,6 @@
                                  src="/media/images/{{ img.filename }}" alt="{{ item.title }}">
                         {% endif %}
                     </td>
-                    <td class="num">{{ item.id }}</td>
                     <td class="title-cell" title="{{ item.title }}">{{ item.title }}</td>
                     <td class="num price" data-price="{{ item.price }}">&euro;&nbsp;{{ "%.2f"|format(item.price) }}</td>
                     <td>{{ item.media_format.label }}</td>
@@ -393,6 +516,11 @@
                     </td>
                     <td class="num">{{ item.huuto_id if item.huuto_id is not none else "-" }}</td>
                     <td class="actions">
+                        <button type="button" class="btn-icon"
+                                data-details-id="{{ item.id }}" data-details-title="{{ item.title }}"
+                                aria-label="View details of {{ item.title }}">
+                            <img src="/media/icons/details-icon.png" alt="" width="16" height="16">
+                        </button>
                         {% if item.huuto_id is none %}
                             <button type="button" class="btn-publish"
                                     data-publish-id="{{ item.id }}" data-publish-title="{{ item.title }}"
@@ -413,7 +541,7 @@
 
         <div class="pagination">
             {% if skip > 0 %}
-                <a href="/?skip={{ prev_skip }}&limit={{ limit }}&order_by={{ order_by }}{% if search %}&search={{ search }}{% endif %}">&larr; Previous</a>
+                <a href="/?skip={{ prev_skip }}&limit={{ limit }}&order_by={{ order_by }}{% if search %}&search={{ search }}{% endif %}{{ filter_qs() }}">&larr; Previous</a>
             {% else %}
                 <span class="pg disabled">&larr; Previous</span>
             {% endif %}
@@ -421,7 +549,7 @@
             <span class="muted">Page {{ (skip // limit) + 1 if limit else 1 }}</span>
 
             {% if has_more %}
-                <a href="/?skip={{ next_skip }}&limit={{ limit }}&order_by={{ order_by }}{% if search %}&search={{ search }}{% endif %}">Next &rarr;</a>
+                <a href="/?skip={{ next_skip }}&limit={{ limit }}&order_by={{ order_by }}{% if search %}&search={{ search }}{% endif %}{{ filter_qs() }}">Next &rarr;</a>
             {% else %}
                 <span class="pg disabled">Next &rarr;</span>
             {% endif %}
@@ -464,6 +592,22 @@
         </form>
     </dialog>
 
+    <dialog id="details-dialog" aria-labelledby="details-title">
+        <div class="close-row">
+            <button type="button" class="btn-secondary" id="details-close">Close</button>
+        </div>
+        <h2 id="details-title"></h2>
+        <div id="details-content">
+            <div id="details-preview">
+                <img id="details-image" hidden alt="">
+            </div>
+            <div id="details-info">
+                <p id="details-error" role="status" aria-live="polite"></p>
+                <dl id="details-meta"></dl>
+            </div>
+        </div>
+    </dialog>
+
     <script>
         (() => {
             try {
@@ -473,6 +617,110 @@
                 }
             } catch (err) {
                 console.error("Unable to format prices", err);
+            }
+
+            const fmtSel = document.getElementById("filter-format");
+            const genreSel = document.getElementById("filter-genre");
+            if (fmtSel && genreSel) {
+                const syncGenres = () => {
+                    const fmt = fmtSel.value;
+                    for (const opt of genreSel.options) {
+                        opt.hidden = fmt !== "" && opt.value !== "" && opt.dataset.format !== fmt;
+                    }
+                };
+                fmtSel.addEventListener("change", () => {
+                    genreSel.value = "";
+                    syncGenres();
+                });
+                syncGenres();
+            }
+
+            const filterForm = document.querySelector(".filters");
+            if (filterForm) {
+                filterForm.addEventListener("submit", () => {
+                    for (const el of filterForm.querySelectorAll("select")) {
+                        if (el.value === "") el.removeAttribute("name");
+                    }
+                });
+            }
+
+            const detailsDialog = document.getElementById("details-dialog");
+            const detailsTitleEl = document.getElementById("details-title");
+            const detailsImageEl = document.getElementById("details-image");
+            const detailsMetaEl = document.getElementById("details-meta");
+            const detailsErrorEl = document.getElementById("details-error");
+
+            const detailsPrice = (v) => new Intl.NumberFormat("fi-FI", { style: "currency", currency: "EUR" }).format(v);
+            const detailsRow = (label, value, extraClass = "") => {
+                const dt = document.createElement("dt");
+                dt.textContent = label;
+                const dd = document.createElement("dd");
+                if (extraClass) dd.className = extraClass;
+                dd.textContent = value === null || value === undefined || value === "" ? "–" : String(value);
+                return [dt, dd];
+            };
+
+            document.getElementById("details-close").addEventListener("click", () => detailsDialog.close());
+
+            for (const btn of document.querySelectorAll("[data-details-id]")) {
+                btn.addEventListener("click", async () => {
+                    const id = btn.dataset.detailsId;
+                    detailsDialog.showModal();
+                    detailsErrorEl.textContent = "";
+                    detailsTitleEl.textContent = btn.dataset.detailsTitle;
+                    detailsImageEl.hidden = true;
+                    detailsMetaEl.replaceChildren();
+                    try {
+                        const resp = await fetch(`/api/v1/items/${id}`);
+                        if (!resp.ok) {
+                            throw new Error(`Server returned ${resp.status}`);
+                        }
+                        const item = await resp.json();
+
+                        const preview = item.images.find((im) => im.file_type === "preview") || item.images[0];
+                        if (preview) {
+                            detailsImageEl.src = `/media/images/${preview.filename}`;
+                            detailsImageEl.alt = item.title;
+                            detailsImageEl.hidden = false;
+                        }
+
+                        const meta = [];
+                        meta.push(...detailsRow("Description", item.description, "desc"));
+                        meta.push(...detailsRow("Price", detailsPrice(item.price), "price-big"));
+                        meta.push(...detailsRow("Quantity", item.quantity));
+                        meta.push(...detailsRow("Status", item.closed === null ? "Draft" : (item.closed ? "Sold" : "Open")));
+                        meta.push(...detailsRow("Media format", item.media_format.label));
+                        meta.push(...detailsRow("Genre", item.genre.label));
+                        meta.push(...detailsRow("Condition", item.condition.label));
+                        meta.push(...detailsRow("Shipping", item.shipping.label));
+                        meta.push(...detailsRow("Packaging", item.packaging.label));
+                        meta.push(...detailsRow("Slipcover", item.slipcover ? "Yes" : "No"));
+                        meta.push(...detailsRow("Country", item.country.label));
+                        meta.push(...detailsRow("Subtitles", item.subtitle.label));
+                        meta.push(...detailsRow("Region", item.region.label));
+                        meta.push(...detailsRow("Discount info", item.discount_info ? item.discount_info.label : "–"));
+                        meta.push(...detailsRow("Keywords", Array.isArray(item.item_keywords) ? item.item_keywords.join(", ") : "–"));
+                        meta.push(...detailsRow("Huuto ID", item.huuto_id));
+                        meta.push(...detailsRow("Created", item.created_at ? new Date(item.created_at).toLocaleString() : ""));
+                        meta.push(...detailsRow("Closing time", item.huuto_closing_time ? new Date(item.huuto_closing_time).toLocaleString() : ""));
+                        if (item.imdb_link) {
+                            const dt = document.createElement("dt");
+                            dt.textContent = "IMDb";
+                            const dd = document.createElement("dd");
+                            const a = document.createElement("a");
+                            a.href = item.imdb_link;
+                            a.target = "_blank";
+                            a.rel = "noopener";
+                            a.textContent = item.imdb_link;
+                            dd.appendChild(a);
+                            meta.push(dt, dd);
+                        }
+                        detailsMetaEl.append(...meta);
+                    } catch (err) {
+                        detailsErrorEl.textContent = `Failed to load details: ${err.message}`;
+                        console.error(err);
+                    }
+                });
             }
 
             const dialog = document.getElementById("delete-dialog");

@@ -20,9 +20,15 @@ async def home(request: Request,
                skip: Annotated[int, Query(ge=0)] = 0,
                limit: Annotated[int, Query(ge=1, le=100)] = 20,
                search: Annotated[str | None, Query()] = None,
-               order_by: Annotated[str, Query(pattern=items_model.order_by_pattern)] = "title"):
+               order_by: Annotated[str, Query(pattern=items_model.order_by_pattern)] = "title",
+               media_format_id: Annotated[int | None, Query()] = None,
+               genre_id: Annotated[int | None, Query()] = None,
+               condition_id: Annotated[int | None, Query()] = None):
 
-    items, total, has_more = await fetch_items(db, skip, limit, search, order_by)
+    items, total, has_more = await fetch_items(db, skip, limit, search, order_by,
+                                               media_format_id, genre_id, condition_id)
+
+    config = await get_item_config(db)
 
     return templates.TemplateResponse(
         request=request,
@@ -37,6 +43,10 @@ async def home(request: Request,
             "has_more": has_more,
             "prev_skip": max(0, skip - limit),
             "next_skip": skip + limit,
+            "config": config,
+            "mf_filter": str(media_format_id) if media_format_id is not None else "",
+            "genre_filter": str(genre_id) if genre_id is not None else "",
+            "cond_filter": str(condition_id) if condition_id is not None else "",
         }
     )
 

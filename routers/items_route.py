@@ -39,14 +39,10 @@ async def fetch_items(db: AsyncSession,
                       skip: int = 0,
                       limit: int = 10,
                       search: str | None = None,
-                      order_by: str = "title") -> tuple[Sequence[items_model.HuutoItem], int, bool]:
-
-    count_stm = select(func.count()).select_from(items_model.HuutoItem)
-    if search is not None:
-        count_stm = count_stm.where(func.concat(items_model.HuutoItem.keywords,items_model.HuutoItem.title,items_model.HuutoItem.description).ilike(f"%{search}%"))
-    count_result = await db.execute(count_stm)
-    total = count_result.scalar() or 0
-    logger.info(f"Total number of items {total}.")
+                      order_by: str = "title",
+                      media_format_id: int | None = None,
+                      genre_id: int | None = None,
+                      condition_id: int | None = None) -> tuple[Sequence[items_model.HuutoItem], int, bool]:
 
     select_stm = select(items_model.HuutoItem).options(selectinload(items_model.HuutoItem.shipping),
                                       selectinload(items_model.HuutoItem.country),
@@ -59,8 +55,27 @@ async def fetch_items(db: AsyncSession,
                                       selectinload(items_model.HuutoItem.genre),
                                       selectinload(items_model.HuutoItem.images)).offset(skip).limit(limit)
 
+    count_stm = select(func.count()).select_from(items_model.HuutoItem)
+    if search is not None:
+        count_stm = count_stm.where(func.concat(items_model.HuutoItem.keywords,items_model.HuutoItem.title,items_model.HuutoItem.description).ilike(f"%{search}%"))
+    if media_format_id is not None:
+        count_stm = count_stm.where(items_model.HuutoItem.media_format_id == media_format_id)
+    if genre_id is not None:
+        count_stm = count_stm.where(items_model.HuutoItem.genre_id == genre_id)
+    if condition_id is not None:
+        count_stm = count_stm.where(items_model.HuutoItem.condition_id == condition_id)
+    count_result = await db.execute(count_stm)
+    total = count_result.scalar() or 0
+    logger.info(f"Total number of items {total}.")
+
     if search is not None:
         select_stm = select_stm.where(func.concat(items_model.HuutoItem.keywords,items_model.HuutoItem.title,items_model.HuutoItem.description).ilike(f"%{search}%"))
+    if media_format_id is not None:
+        select_stm = select_stm.where(items_model.HuutoItem.media_format_id == media_format_id)
+    if genre_id is not None:
+        select_stm = select_stm.where(items_model.HuutoItem.genre_id == genre_id)
+    if condition_id is not None:
+        select_stm = select_stm.where(items_model.HuutoItem.condition_id == condition_id)
 
     for order_by_rule in order_by.split(","):
         descending = order_by_rule.startswith("-")
@@ -83,9 +98,13 @@ async def get_items(db: Annotated[AsyncSession, Depends(get_db)],
                     skip: Annotated[int, Query(ge=0)] = 0, 
                     limit: Annotated[int, Query(ge=1, le=100)] = 10,
                     search: Annotated[str | None, Query()] = None,
-                    order_by: Annotated[str , Query(pattern=items_model.order_by_pattern)] = "title"):
+                    order_by: Annotated[str , Query(pattern=items_model.order_by_pattern)] = "title",
+                    media_format_id: Annotated[int | None, Query()] = None,
+                    genre_id: Annotated[int | None, Query()] = None,
+                    condition_id: Annotated[int | None, Query()] = None):
 
-    items, total, has_more = await fetch_items(db, skip, limit, search, order_by)
+    items, total, has_more = await fetch_items(db, skip, limit, search, order_by,
+                                               media_format_id, genre_id, condition_id)
 
     return items_schema.PaginatedItemResponse(
         items=[items_schema.ItemResponse.model_validate(item) for item in items],
