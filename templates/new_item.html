@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f6f7f9">
+    <title>Add Item – HuutoApp</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --border: #d5d9de;
+            --muted: #667085;
+            --accent: #2a6fb0;
+            --accent-hover: #205b94;
+            --danger: #c0392b;
+            --bg: #fff;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 2rem;
+            background: #f6f7f9;
+            color: #222;
+            overflow-x: hidden;
+        }
+        .skip-link {
+            position: absolute;
+            transform: translateY(-200%);
+            z-index: 50;
+            background: var(--bg);
+            color: var(--accent);
+            padding: 0.5rem 1rem;
+            border-radius: 0 0 6px 0;
+            text-decoration: none;
+            transition: transform 0.15s ease;
+        }
+        .skip-link:focus-visible {
+            transform: translateY(0);
+            outline: 2px solid var(--accent);
+            outline-offset: -2px;
+        }
+        .visually-hidden {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            margin: -1px;
+            padding: 0;
+            overflow: hidden;
+            clip: rect(0 0 0 0);
+            white-space: nowrap;
+            border: 0;
+        }
+        main {
+            max-width: 52rem;
+            margin: 0 auto;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            scroll-margin-top: 2rem;
+        }
+        h1 {
+            margin-top: 0;
+            font-size: 1.4rem;
+            text-wrap: balance;
+            scroll-margin-top: 2rem;
+        }
+        .back-link { color: var(--accent); text-decoration: none; }
+        .back-link:hover { text-decoration: underline; }
+        form[autocomplete="off"] { margin-top: 1.25rem; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+        .field { display: flex; flex-direction: column; gap: 0.3rem; }
+        .field.full { grid-column: 1 / -1; }
+        .field label { font-weight: 600; font-size: 0.9rem; }
+        .field label .opt { font-weight: 400; color: var(--muted); font-size: 0.8rem; }
+        .required::after { content: " *"; color: var(--danger); }
+        label.check {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 500;
+            font-size: 0.9rem;
+            min-height: 2.4rem;
+            padding: 0.4rem 0.6rem;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            cursor: pointer;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        label.check:hover { background: #fafbfc; }
+        input[type="text"], input[type="number"], select, textarea {
+            padding: 0.45rem 0.6rem;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: #fff;
+            color: #222;
+            font: inherit;
+        }
+        input[type="text"]:focus-visible, input[type="number"]:focus-visible,
+        select:focus-visible, textarea:focus-visible, input[type="file"]:focus-visible,
+        button:focus-visible, a:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+        .invalid { border-color: var(--danger) !important; }
+        .field-error:empty { display: none; }
+        .field-error { color: var(--danger); font-size: 0.8rem; }
+        .images {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .images input[type="file"] {
+            border: 1px dashed var(--border);
+            padding: 1rem;
+            border-radius: 4px;
+        }
+        .hint { color: var(--muted); font-size: 0.8rem; margin: 0; }
+        #image-previews {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin: 0;
+            padding: 0;
+        }
+        #image-previews li {
+            position: relative;
+        }
+        #image-previews img {
+            width: 64px;
+            height: 64px;
+            object-fit: cover;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: #eee;
+            display: block;
+        }
+        #image-previews .main-tag {
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: rgb(0 0 0 / 0.55);
+            color: #fff;
+            font-size: 0.65rem;
+            text-align: center;
+            border-radius: 0 0 4px 4px;
+        }
+        #create-status:empty { display: none; }
+        #create-status { color: var(--muted); margin: 0.75rem 0; }
+        .actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 1.25rem;
+        }
+        button {
+            padding: 0.5rem 1.2rem;
+            border: 1px solid var(--accent);
+            background: var(--accent);
+            color: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            font: inherit;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        button:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+        button:disabled { opacity: 0.6; cursor: progress; }
+        button, .back-link, a, label.check {
+            -webkit-tap-highlight-color: transparent;
+        }
+        #create-status.error { color: var(--danger); }
+        @media (prefers-reduced-motion: no-preference) {
+            button, .skip-link { transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .skip-link { transition: none; }
+        }
+        @media (max-width: 40rem) {
+            .grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <main id="main">
+        <h1><span translate="no">HuutoApp</span> · Add Item</h1>
+        <a class="back-link" href="/">&larr; Back to items</a>
+
+        <form id="new-item-form" autocomplete="off" novalidate>
+            <div class="grid">
+                <div class="field full">
+                    <label class="required" for="title">Title</label>
+                    <input type="text" id="title" name="title" maxlength="60" autocomplete="off"
+                           aria-describedby="title-error">
+                    <span class="field-error" id="title-error"></span>
+                </div>
+
+                <div class="field full">
+                    <label class="required" for="description">Description</label>
+                    <textarea id="description" name="description" rows="5" aria-describedby="description-error"></textarea>
+                    <span class="field-error" id="description-error"></span>
+                </div>
+
+                <div class="field">
+                    <label class="required" for="quantity">Quantity</label>
+                    <input type="number" id="quantity" name="quantity" value="1" min="1" max="5" step="1"
+                           inputmode="numeric" aria-describedby="quantity-error">
+                    <span class="field-error" id="quantity-error"></span>
+                </div>
+                <div class="field">
+                    <label class="required" for="price">Price (&euro;)</label>
+                    <input type="number" id="price" name="price" min="0.01" step="0.01"
+                           inputmode="decimal" aria-describedby="price-error">
+                    <span class="field-error" id="price-error"></span>
+                </div>
+
+                {% macro select_field(name, label, options, required=True) -%}
+                <div class="field">
+                    <label class="{{ "required" if required else "" }}" for="{{ name }}">{{ label }}{% if not required %}<span class="opt"> optional</span>{% endif %}</label>
+                    <select id="{{ name }}" name="{{ name }}" {% if required %}required{% endif %} aria-describedby="{{ name }}-error">
+                        <option value="" selected disabled>Select…</option>
+                        {% for opt in options %}<option value="{{ opt.id }}">{{ opt.label }}</option>{% endfor %}
+                    </select>
+                    <span class="field-error" id="{{ name }}-error"></span>
+                </div>
+                {%- endmacro %}
+
+                {{ select_field("media_format_id", "Media format", config.media_format) }}
+
+                <div class="field">
+                    <label class="required" for="genre_id">Genre</label>
+                    <select id="genre_id" name="genre_id" required aria-describedby="genre_id-error">
+                        <option value="" selected disabled>Select…</option>
+                        {% for opt in config.genre %}
+                            <option value="{{ opt.id }}" data-format="{{ opt.media_format_id }}">{{ opt.label }}</option>
+                        {% endfor %}
+                    </select>
+                    <span class="field-error" id="genre_id-error"></span>
+                </div>
+
+                {{ select_field("condition_id", "Condition", config.condition) }}
+                {{ select_field("region_id", "Region", config.region) }}
+                {{ select_field("shipping_id", "Shipping", config.shipping) }}
+                {{ select_field("country_id", "Country", config.country) }}
+                {{ select_field("subtitle_id", "Subtitles", config.subtitles) }}
+                {{ select_field("packaging_id", "Packaging", config.packaging) }}
+                {{ select_field("discount_info_id", "Discount info", config.discount_info, required=False) }}
+
+                <div class="field">
+                    <label class="check" for="offers_allowed">
+                        <input type="checkbox" id="offers_allowed" name="offers_allowed">
+                        Offers allowed
+                    </label>
+                </div>
+                <div class="field">
+                    <label class="check" for="slipcover">
+                        <input type="checkbox" id="slipcover" name="slipcover">
+                        Slipcover included
+                    </label>
+                </div>
+
+                <div class="field full">
+                    <label class="required" for="images">Images</label>
+                    <div class="images">
+                        <input type="file" id="images" name="images" accept="image/*" multiple
+                               aria-describedby="images-error">
+                        <p class="hint">Select up to 5 images. The first image becomes the main preview.</p>
+                        <span class="field-error" id="images-error"></span>
+                        <ul id="image-previews" aria-label="Selected images"></ul>
+                    </div>
+                </div>
+            </div>
+
+            <p id="create-status" role="status" aria-live="polite"></p>
+
+            <div class="actions">
+                <button type="submit" id="submit-btn">Create Item</button>
+                <a class="back-link" href="/">Cancel</a>
+            </div>
+        </form>
+    </main>
+
+    <script>
+        (() => {
+            const form = document.getElementById("new-item-form");
+            const submitBtn = document.getElementById("submit-btn");
+            const statusEl = document.getElementById("create-status");
+            const fileInput = document.getElementById("images");
+            const formatSel = document.getElementById("media_format_id");
+            const genreSel = document.getElementById("genre_id");
+            const previewsEl = document.getElementById("image-previews");
+
+            const revoke = (url) => { if (url) URL.revokeObjectURL(url); };
+            const fieldError = (id) => document.getElementById(id + "-error");
+            const setFieldError = (name, message) => {
+                const el = form.elements[name];
+                const err = fieldError(name);
+                err.textContent = message;
+                if (message) {
+                    el.setAttribute("aria-invalid", "true");
+                    el.classList.add("invalid");
+                } else {
+                    el.removeAttribute("aria-invalid");
+                    el.classList.remove("invalid");
+                }
+            };
+
+            function filterGenres() {
+                const fmt = formatSel.value;
+                genreSel.value = "";
+                for (const opt of genreSel.options) {
+                    opt.hidden = opt.value !== "" && opt.dataset.format !== fmt;
+                }
+            }
+            formatSel.addEventListener("change", filterGenres);
+            filterGenres();
+            if (formatSel.value === "") {
+                const first = genreSel.querySelector("option[value]:not([value=''])");
+                if (first) first.hidden = false;
+            }
+
+            fileInput.addEventListener("change", () => {
+                const files = Array.from(fileInput.files);
+                for (const urlState of previewsEl.querySelectorAll("img")) {
+                    revoke(urlState.dataset.url);
+                }
+                previewsEl.replaceChildren();
+                files.slice(0, 5).forEach((file, index) => {
+                    const li = document.createElement("li");
+                    const img = document.createElement("img");
+                    const url = URL.createObjectURL(file);
+                    img.dataset.url = url;
+                    img.src = url;
+                    img.width = 64;
+                    img.height = 64;
+                    img.alt = `Selected image ${index + 1}`;
+                    li.appendChild(img);
+                    if (index === 0) {
+                        const tag = document.createElement("span");
+                        tag.className = "main-tag";
+                        tag.textContent = "main";
+                        li.appendChild(tag);
+                    }
+                    previewsEl.appendChild(li);
+                });
+                setFieldError("images", "");
+            });
+
+            function errorMessage(data, status) {
+                if (!data) return `server returned HTTP ${status}`;
+                if (typeof data.detail === "string") return data.detail;
+                if (Array.isArray(data.detail)) return data.detail.map((d) => d.msg).join(", ");
+                return JSON.stringify(data);
+            }
+
+            form.addEventListener("submit", async (e) => {
+                e.preventDefault();
+                if (submitBtn.disabled) return;
+
+                let firstInvalid = null;
+                const check = (name, ok, message) => {
+                    setFieldError(name, "");
+                    if (!ok) {
+                        setFieldError(name, message);
+                        if (!firstInvalid) firstInvalid = fieldError(name);
+                        return false;
+                    }
+                    return true;
+                };
+                const val = (name) => String(form.elements[name].value).trim();
+
+                const title = val("title");
+                const description = val("description");
+                const quantity = Number(form.elements.quantity.value);
+                const price = Number(form.elements.price.value);
+                const files = Array.from(fileInput.files);
+
+                check("title", title.length >= 1 && title.length <= 60, "Enter a title (1-60 characters).");
+                check("description", description.length >= 1, "Enter a description.");
+                check("quantity", Number.isInteger(quantity) && quantity >= 1 && quantity <= 5, "Enter a whole quantity between 1 and 5.");
+                check("price", Number.isFinite(price) && price > 0, "Enter a price greater than 0.");
+                check("images", files.length <= 5, "Select at most 5 images.");
+
+                for (const name of ["media_format_id", "genre_id", "condition_id", "region_id",
+                                    "shipping_id", "country_id", "subtitle_id", "packaging_id"]) {
+                    const labels = {
+                        media_format_id: "Media format", genre_id: "Genre", condition_id: "Condition",
+                        region_id: "Region", shipping_id: "Shipping", country_id: "Country",
+                        subtitle_id: "Subtitles", packaging_id: "Packaging",
+                    };
+                    check(name, val(name) !== "", `Select a ${labels[name].toLowerCase()}.`);
+                }
+
+                if (firstInvalid) {
+                    firstInvalid.scrollIntoView({ block: "center", behavior: "smooth" });
+                    firstInvalid.focus();
+                    return;
+                }
+
+                const payload = {
+                    title,
+                    description,
+                    quantity,
+                    price,
+                    offers_allowed: form.elements.offers_allowed.checked,
+                    slipcover: form.elements.slipcover.checked,
+                    shipping_id: Number(val("shipping_id")),
+                    country_id: Number(val("country_id")),
+                    subtitle_id: Number(val("subtitle_id")),
+                    region_id: Number(val("region_id")),
+                    condition_id: Number(val("condition_id")),
+                    packaging_id: Number(val("packaging_id")),
+                    media_format_id: Number(val("media_format_id")),
+                    genre_id: Number(val("genre_id")),
+                };
+                const discount = val("discount_info_id");
+                if (discount !== "") payload.discount_info_id = Number(discount);
+
+                submitBtn.disabled = true;
+                submitBtn.textContent = "Creating…";
+                statusEl.className = "";
+                statusEl.textContent = "Creating the item…";
+
+                try {
+                    const res = await fetch("/api/v1/items", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload),
+                    });
+                    if (!res.ok) {
+                        throw new Error(errorMessage(await res.json().catch(() => null), res.status));
+                    }
+                    const item = await res.json();
+
+                    for (let i = 0; i < files.length; i++) {
+                        statusEl.textContent = `Uploading image ${i + 1} of ${files.length}…`;
+                        const fd = new FormData();
+                        fd.append("image", files[i]);
+                        fd.append("image_type", i === 0 ? "preview" : "fullsize");
+                        fd.append("phase", "initial");
+                        const imgRes = await fetch(`/api/v1/items/${item.id}/image`, { method: "PATCH", body: fd });
+                        if (!imgRes.ok) {
+                            throw new Error(errorMessage(await imgRes.json().catch(() => null), imgRes.status));
+                        }
+                    }
+
+                    statusEl.textContent = "Item created.";
+                    window.location.href = "/";
+                } catch (err) {
+                    statusEl.className = "error";
+                    statusEl.textContent = `Failed to create item: ${err.message}. Please try again.`;
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = "Create Item";
+                }
+            });
+        })();
+    </script>
+</body>
+</html>

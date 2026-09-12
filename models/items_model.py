@@ -4,7 +4,7 @@ from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, Float, Boole
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from db import Base
 
-OrderByColumns = Literal["title","price"]
+OrderByColumns = Literal["title","price","format","genre","condition"]
 order_by_pattern=f"^(-?(?:{'|'.join(get_args(OrderByColumns))}))(?:,(-?(?:{'|'.join(get_args(OrderByColumns))})))*$"
 
 class DiscountInfo(Base):

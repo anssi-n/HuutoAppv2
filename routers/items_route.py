@@ -1,9 +1,9 @@
-from fastapi import HTTPException, status, Depends, Query, UploadFile, Form, APIRouter, Request
+from fastapi import HTTPException, status, Depends, Query, UploadFile, Form, APIRouter
 from starlette.concurrency import run_in_threadpool
 from redis.asyncio import Redis
 
-from typing import Annotated, Any
-from sqlalchemy import select, func, desc, inspect
+from typing import Annotated, Any, Sequence
+from sqlalchemy import select, func, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from pydantic import ValidationError
@@ -21,13 +21,25 @@ from logger import logger
 
 router = APIRouter()
 
-@router.get("", response_model=items_schema.PaginatedItemResponse)
-async def get_items(request: Request,
-                    db: Annotated[AsyncSession, Depends(get_db)], 
-                    skip: Annotated[int, Query(ge=0)] = 0, 
-                    limit: Annotated[int, Query(ge=1, le=100)] = 10,
-                    search: Annotated[str | None, Query()] = None,
-                    order_by: Annotated[str , Query(pattern=items_model.order_by_pattern)] = "title"):
+ORDER_BY_COLUMNS: dict[str, Any] = {
+    "title": func.regexp_replace(func.lower(items_model.HuutoItem.title), '^(a|an|the) ', '', 'i'),
+    "price": items_model.HuutoItem.price,
+    "format": items_model.MediaFormat.label,
+    "genre": items_model.Genre.label,
+    "condition": items_model.Condition.label,
+}
+
+ORDER_BY_JOINS: dict[str, Any] = {
+    "format": items_model.HuutoItem.media_format,
+    "genre": items_model.HuutoItem.genre,
+    "condition": items_model.HuutoItem.condition,
+}
+
+async def fetch_items(db: AsyncSession,
+                      skip: int = 0,
+                      limit: int = 10,
+                      search: str | None = None,
+                      order_by: str = "title") -> tuple[Sequence[items_model.HuutoItem], int, bool]:
 
     count_stm = select(func.count()).select_from(items_model.HuutoItem)
     if search is not None:
@@ -35,9 +47,7 @@ async def get_items(request: Request,
     count_result = await db.execute(count_stm)
     total = count_result.scalar() or 0
     logger.info(f"Total number of items {total}.")
-    logger.info(dict(request.query_params))
-    logger.info([col[0] for col in inspect(items_model.HuutoItem).columns.items()])
-    # [col[0] for col in inspect(HuutoItem).columns.items() if col[1].comment == "filter"]
+
     select_stm = select(items_model.HuutoItem).options(selectinload(items_model.HuutoItem.shipping),
                                       selectinload(items_model.HuutoItem.country),
                                       selectinload(items_model.HuutoItem.subtitle),
@@ -48,26 +58,34 @@ async def get_items(request: Request,
                                       selectinload(items_model.HuutoItem.media_format),
                                       selectinload(items_model.HuutoItem.genre),
                                       selectinload(items_model.HuutoItem.images)).offset(skip).limit(limit)
-                                    #   selectinload(items_model.HuutoItem.images)).order_by(items_model.HuutoItem.title).offset(skip).limit(limit)
 
     if search is not None:
         select_stm = select_stm.where(func.concat(items_model.HuutoItem.keywords,items_model.HuutoItem.title,items_model.HuutoItem.description).ilike(f"%{search}%"))
 
     for order_by_rule in order_by.split(","):
-        if "title" in order_by_rule:
-            if order_by_rule.startswith("-"):
-                select_stm = select_stm.order_by(desc(func.regexp_replace(func.lower(items_model.HuutoItem.title),'^(a|an|the) ','','i')))
-            else:
-                select_stm = select_stm.order_by(func.regexp_replace(func.lower(items_model.HuutoItem.title),'^(a|an|the) ','','i'))
-        else:
-            if order_by_rule.startswith("-"):
-                select_stm = select_stm.order_by(desc(order_by_rule[1:]))
-            else:
-                select_stm = select_stm.order_by(order_by_rule)
+        descending = order_by_rule.startswith("-")
+        column_name = order_by_rule[1:] if descending else order_by_rule
+        join = ORDER_BY_JOINS.get(column_name)
+        if join is not None:
+            select_stm = select_stm.outerjoin(join)
+        column = ORDER_BY_COLUMNS.get(column_name)
+        if column is not None:
+            select_stm = select_stm.order_by(desc(column) if descending else column)
 
     result = await db.execute(select_stm)
     items = result.scalars().all()
-    has_more = skip + len(items) < total                               
+    has_more = skip + len(items) < total
+
+    return items, total, has_more
+
+@router.get("", response_model=items_schema.PaginatedItemResponse)
+async def get_items(db: Annotated[AsyncSession, Depends(get_db)], 
+                    skip: Annotated[int, Query(ge=0)] = 0, 
+                    limit: Annotated[int, Query(ge=1, le=100)] = 10,
+                    search: Annotated[str | None, Query()] = None,
+                    order_by: Annotated[str , Query(pattern=items_model.order_by_pattern)] = "title"):
+
+    items, total, has_more = await fetch_items(db, skip, limit, search, order_by)
 
     return items_schema.PaginatedItemResponse(
         items=[items_schema.ItemResponse.model_validate(item) for item in items],
