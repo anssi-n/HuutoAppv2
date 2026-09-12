@@ -177,7 +177,7 @@ async def publish_csv(csv: UploadFile,
 
     try:
         content = await csv.read()
-        csv_lines = [line.strip() for line in content.decode().split("\n")]
+        csv_lines = [line.strip() for line in content.decode().split("\n") if line.strip()]
         csv_file = items_schema.CsvFile.model_validate({"headers": csv_lines[0], "titles": csv_lines[1:]})
     except ValidationError as err:
         raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail=f"Incorrectly formatted csv file: {str(err)}")
