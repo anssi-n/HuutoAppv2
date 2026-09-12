@@ -407,10 +407,6 @@
 
         <div class="toolbar">
             <form method="get" action="/" role="search">
-                {% if skip %}
-                    <input type="hidden" name="skip" value="{{ skip }}">
-                {% endif %}
-                <input type="hidden" name="limit" value="{{ limit }}">
                 <input type="hidden" name="order_by" value="{{ order_by }}">
                 {% if mf_filter %}<input type="hidden" name="media_format_id" value="{{ mf_filter }}">{% endif %}
                 {% if genre_filter %}<input type="hidden" name="genre_id" value="{{ genre_filter }}">{% endif %}
