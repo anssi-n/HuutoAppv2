@@ -1,3 +1,5 @@
+import math
+
 from fastapi.responses import HTMLResponse
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.templating import Jinja2Templates
@@ -28,6 +30,11 @@ async def home(request: Request,
     items, total, has_more = await fetch_items(db, skip, limit, search, order_by,
                                                media_format_id, genre_id, condition_id)
 
+    total_pages = math.ceil(total / limit) if limit else 1
+    current_page = min(skip // limit + 1, total_pages) if limit else 1
+    pages = [p for p in range(1, total_pages + 1)
+             if p == 1 or p == total_pages or abs(p - current_page) <= 2]
+
     config = await get_item_config(db)
 
     return templates.TemplateResponse(
@@ -41,6 +48,9 @@ async def home(request: Request,
             "search": search or "",
             "order_by": order_by,
             "has_more": has_more,
+            "total_pages": total_pages,
+            "current_page": current_page,
+            "pages": pages,
             "prev_skip": max(0, skip - limit),
             "next_skip": skip + limit,
             "config": config,

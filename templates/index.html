@@ -339,7 +339,8 @@
         }
         .pagination {
             display: flex;
-            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.35rem;
             align-items: center;
             margin-top: 1rem;
         }
@@ -361,6 +362,11 @@
             color: var(--muted);
             border-color: var(--border);
             pointer-events: none;
+        }
+        .pagination .current {
+            font-weight: 700;
+            background: #e9efff;
+            border-color: var(--accent);
         }
         .sort-link {
             display: inline-flex;
@@ -457,6 +463,7 @@
         <p id="delete-status" role="status" aria-live="polite"></p>
 
         {% macro filter_qs() -%}{% if mf_filter %}&media_format_id={{ mf_filter }}{% endif %}{% if genre_filter %}&genre_id={{ genre_filter }}{% endif %}{% if cond_filter %}&condition_id={{ cond_filter }}{% endif %}{%- endmacro %}
+        {% macro page_url(skip) -%}/?skip={{ skip }}&limit={{ limit }}&order_by={{ order_by }}{% if search %}&search={{ search }}{% endif %}{{ filter_qs() }}{%- endmacro %}
 
         {% macro sort_header(col, label, extra_class="") -%}
             {% set rule = order_by.split(",")[0] %}
@@ -537,17 +544,32 @@
 
         <div class="pagination">
             {% if skip > 0 %}
-                <a href="/?skip={{ prev_skip }}&limit={{ limit }}&order_by={{ order_by }}{% if search %}&search={{ search }}{% endif %}{{ filter_qs() }}">&larr; Previous</a>
+                <a class="pg" href="{{ page_url(0) }}" aria-label="First page">⇤ First</a>
             {% else %}
-                <span class="pg disabled">&larr; Previous</span>
+                <span class="pg disabled" aria-label="First page">⇤ First</span>
             {% endif %}
 
-            <span class="muted">Page {{ (skip // limit) + 1 if limit else 1 }}</span>
+            {% if skip > 0 %}
+                <a class="pg" href="{{ page_url(prev_skip) }}">&larr; Previous</a>
+            {% endif %}
+
+            {% for p in pages %}
+                {% if loop.previtem is defined and p > loop.previtem + 1 %}<span class="pg">…</span>{% endif %}
+                {% if p == current_page %}
+                    <span class="pg current" aria-current="page">Page {{ p }}</span>
+                {% else %}
+                    <a class="pg" href="{{ page_url((p - 1) * limit) }}" aria-label="Page {{ p }}">{{ p }}</a>
+                {% endif %}
+            {% endfor %}
 
             {% if has_more %}
-                <a href="/?skip={{ next_skip }}&limit={{ limit }}&order_by={{ order_by }}{% if search %}&search={{ search }}{% endif %}{{ filter_qs() }}">Next &rarr;</a>
+                <a class="pg" href="{{ page_url(next_skip) }}">Next &rarr;</a>
+            {% endif %}
+
+            {% if current_page != total_pages %}
+                <a class="pg" href="{{ page_url((total_pages - 1) * limit) }}" aria-label="Last page">Last ⇥</a>
             {% else %}
-                <span class="pg disabled">Next &rarr;</span>
+                <span class="pg disabled" aria-label="Last page">Last ⇥</span>
             {% endif %}
         </div>
         {% else %}
@@ -581,6 +603,7 @@
                 <input type="checkbox" id="publish-add-keywords">
                 Add keywords to title
             </label>
+            <p id="publish-status" role="status" aria-live="polite"></p>
             <div class="dialog-actions">
                 <button type="submit" class="btn-secondary" value="cancel" autofocus>Cancel</button>
                 <button type="submit" class="btn-primary" value="publish">Publish</button>
