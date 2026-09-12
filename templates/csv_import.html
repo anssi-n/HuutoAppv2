@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f3f5f9">
+    <title>Import CSV – HuutoApp</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --bg-page: #f3f5f9;
+            --bg: #ffffff;
+            --border: #e4e8f0;
+            --border-strong: #cbd3e1;
+            --muted: #667085;
+            --text: #1f2430;
+            --accent: #4f46e5;
+            --accent-hover: #4338ca;
+            --accent-strong: #3730a3;
+            --accent-soft: #eef2ff;
+            --accent-ring: rgb(79 70 229 / 0.16);
+            --danger: #dc2626;
+            --danger-hover: #b91c1c;
+            --danger-soft: #fef2f2;
+            --success: #0f9d58;
+            --success-soft: #e6f7ee;
+            --shadow-sm: 0 1px 2px rgb(16 24 40 / 0.05);
+            --shadow-md: 0 2px 6px -1px rgb(16 24 40 / 0.08), 0 16px 36px -12px rgb(16 24 40 / 0.14);
+            --radius: 12px;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 2rem 1.25rem;
+            background: var(--bg-page);
+            background-image:
+                radial-gradient(1100px 480px at 85% -10%, rgb(79 70 229 / 0.1), transparent 60%),
+                radial-gradient(900px 420px at -10% 110%, rgb(37 99 235 / 0.08), transparent 60%);
+            background-attachment: fixed;
+            color: var(--text);
+            overflow-x: hidden;
+            line-height: 1.5;
+        }
+        .skip-link {
+            position: absolute;
+            transform: translateY(-250%);
+            z-index: 50;
+            background: var(--accent);
+            color: #fff;
+            padding: 0.6rem 1rem;
+            border-radius: 0 0 8px 0;
+            text-decoration: none;
+            font-weight: 600;
+            box-shadow: var(--shadow-md);
+            transition: transform 0.15s ease;
+        }
+        .skip-link:focus-visible {
+            transform: translateY(0);
+            outline: 2px solid #fff;
+            outline-offset: -3px;
+        }
+        .visually-hidden {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            margin: -1px;
+            padding: 0;
+            overflow: hidden;
+            clip: rect(0 0 0 0);
+            white-space: nowrap;
+            border: 0;
+        }
+        :focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+        main {
+            max-width: 52rem;
+            margin: 0 auto;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-md);
+            padding: 1.5rem 1.5rem 2rem;
+            scroll-margin-top: 2rem;
+        }
+        h1 {
+            margin: 0 0 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            font-size: 1.45rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            text-wrap: balance;
+            scroll-margin-top: 2rem;
+        }
+        h1::before {
+            content: "";
+            flex: none;
+            width: 0.7rem;
+            height: 1.4rem;
+            border-radius: 4px;
+            background: linear-gradient(180deg, var(--accent), #2563eb);
+            box-shadow: var(--shadow-sm);
+        }
+        .back-link {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 500;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .back-link:hover { text-decoration: underline; }
+
+        .section {
+            margin-top: 1.5rem;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1rem 1.1rem;
+            background: var(--bg-page);
+        }
+        .section h2 {
+            margin: 0 0 0.5rem;
+            font-size: 0.95rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+        }
+        .section p, .section ul { margin: 0.3rem 0; font-size: 0.85rem; color: var(--muted); }
+        .section ul { padding-left: 1.2rem; }
+
+        .field { display: flex; flex-direction: column; gap: 0.35rem; margin-top: 1.25rem; }
+        .field label { font-weight: 600; font-size: 0.9rem; }
+        .field label .opt { font-weight: 400; color: var(--muted); font-size: 0.8rem; }
+        .required::after { content: " *"; color: var(--danger); }
+        .dropzone {
+            padding: 1.4rem 1.1rem;
+            border: 1.5px dashed var(--border-strong);
+            border-radius: 10px;
+            background: var(--bg-page);
+            text-align: center;
+            color: var(--muted);
+            font: inherit;
+            cursor: pointer;
+            transition: border-color 0.15s ease, background-color 0.15s ease;
+        }
+        .dropzone:hover, .dropzone:focus-visible, .dropzone.drag {
+            border-color: var(--accent);
+            background: var(--accent-soft);
+        }
+        .dropzone strong { color: var(--text); }
+        .dropzone input[type="file"] {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            overflow: hidden;
+        }
+        .hint { color: var(--muted); font-size: 0.8rem; margin: 0.3rem 0 0; }
+        .field-error:empty { display: none; }
+        .field-error { color: var(--danger); font-size: 0.8rem; }
+        .invalid { border-color: var(--danger) !important; }
+
+        #selected-files {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin: 0.75rem 0 0;
+            padding: 0;
+        }
+        #selected-files li {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            max-width: 100%;
+            padding: 0.35rem 0.6rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg);
+            font-size: 0.8rem;
+            box-shadow: var(--shadow-sm);
+        }
+        #selected-files li img {
+            width: 40px;
+            height: 40px;
+            object-fit: cover;
+            border-radius: 6px;
+            background: #eef1f6;
+            display: block;
+        }
+        #selected-files li .name {
+            max-width: 22rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        #selected-files li .size { color: var(--muted); white-space: nowrap; }
+        #selected-files li .remove {
+            border: none;
+            background: none;
+            color: var(--muted);
+            cursor: pointer;
+            font: inherit;
+            font-weight: 700;
+            padding: 0 0.2rem;
+            line-height: 1;
+        }
+        #selected-files li .remove:hover { color: var(--danger); }
+
+        .progress-wrap { margin-top: 0.5rem; }
+        .progress-wrap[hidden] { display: none; }
+        .progress-bar {
+            height: 0.6rem;
+            border-radius: 999px;
+            background: #e8ebf2;
+            overflow: hidden;
+        }
+        .progress-bar .fill {
+            height: 100%;
+            width: 0%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, var(--accent), #2563eb);
+            transition: width 0.2s ease;
+        }
+
+        #import-status:empty { display: none; }
+        #import-status { margin: 0.75rem 0; font-size: 0.9rem; }
+        #import-status.error { color: var(--danger); }
+        #import-status.ok { color: var(--success); }
+
+        #results:empty { display: none; }
+        #results {
+            list-style: none;
+            display: grid;
+            gap: 0.35rem;
+            margin: 0.5rem 0 0;
+            padding: 0;
+            font-size: 0.85rem;
+            max-height: 16rem;
+            overflow: auto;
+        }
+        #results li { display: flex; gap: 0.5rem; }
+
+        .actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
+        }
+        button.primary {
+            padding: 0.55rem 1.3rem;
+            border: 1px solid var(--accent);
+            background: linear-gradient(180deg, var(--accent), var(--accent-hover));
+            color: #fff;
+            border-radius: 8px;
+            cursor: pointer;
+            font: inherit;
+            font-weight: 600;
+            box-shadow: var(--shadow-sm);
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        button.primary:hover:not(:disabled) { border-color: var(--accent-strong); background: linear-gradient(180deg, var(--accent-hover), var(--accent-strong)); }
+        button.primary:active:not(:disabled) { transform: translateY(1px); box-shadow: none; }
+        button.primary:disabled { opacity: 0.6; cursor: progress; }
+
+        details.reference {
+            margin-top: 1.5rem;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        details.reference summary {
+            cursor: pointer;
+            padding: 0.8rem 1.1rem;
+            font-weight: 600;
+            font-size: 0.9rem;
+            background: var(--bg-page);
+            user-select: none;
+        }
+        .ref-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+            gap: 1rem;
+            padding: 1rem;
+            border-top: 1px solid var(--border);
+        }
+        .ref-col h3 { margin: 0 0 0.4rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+        .ref-col ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            font-size: 0.8rem;
+            color: var(--muted);
+        }
+        .ref-col li { padding: 0.15rem 0; }
+
+        button, .back-link, a, summary {
+            -webkit-tap-highlight-color: transparent;
+        }
+        @media (prefers-reduced-motion: no-preference) {
+            button.primary, .skip-link, .dropzone, .progress-bar .fill {
+                transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease, width 0.2s ease;
+            }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            button.primary, .skip-link, .dropzone { transition: none; }
+            button.primary:active:not(:disabled) { transform: none; }
+        }
+        @media (max-width: 40rem) {
+            .ref-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <main id="main">
+        <h1><span translate="no">HuutoApp</span> · Import CSV</h1>
+        <a class="back-link" href="/">&larr; Back to items</a>
+
+        <section class="section" aria-label="How CSV import works">
+            <h2>How it works</h2>
+            <p>The import happens in two steps:<br>
+                1. Images are uploaded first – image files must exist on the server before the CSV can reference them.<br>
+                2. The CSV file is imported and each row becomes an item that gets queued for publishing.</p>
+            <p>The CSV is pipe-delimited (<code>|</code>) with a header row and exactly 16 columns. The last column of each data row is a keyword flag (<code>0</code> or <code>1</code>). The <code>images</code> column references already-uploaded files with a <code>type:filename</code> pair, separated by semicolons.</p>
+            <p>Images are limited to 10&nbsp;MB each, and are uploaded one at a time with visible progress – the browser waits as long as it takes and never times out.</p>
+        </section>
+
+        <form id="csv-form" autocomplete="off" novalidate>
+            <div class="field">
+                <label class="required" for="csv-file">CSV file</label>
+                <label class="dropzone" id="csv-dropzone" for="csv-file">
+                    <strong>Choose CSV file</strong><br>
+                    or drop it here &nbsp;·&nbsp; .csv (pipe-delimited, see format above)
+                    <input type="file" id="csv-file" name="csv" accept=".csv,text/csv" aria-describedby="csv-error">
+                </label>
+                <span class="field-error" id="csv-error"></span>
+            </div>
+
+            <div class="field">
+                <label for="import-images">Images <span class="opt">optional – used only if your CSV references them</span></label>
+                <label class="dropzone" id="images-dropzone" for="import-images">
+                    <strong>Choose images</strong><br>
+                    or drop them here &nbsp;·&nbsp; up to 10&nbsp;MB each, any number
+                    <input type="file" id="import-images" name="images" accept="image/*" multiple aria-describedby="images-error">
+                </label>
+                <p class="hint">Files are stored by their original name, so the CSV <code>images</code> column can reference them (e.g. <code>fullsize:front.jpg</code>).</p>
+                <span class="field-error" id="images-error"></span>
+                <ul id="selected-files" aria-label="Selected files"></ul>
+            </div>
+
+            <div class="progress-wrap" id="progress-wrap" hidden>
+                <div class="progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress-bar">
+                    <div class="fill" id="progress-fill"></div>
+                </div>
+                <p class="hint" id="progress-text"></p>
+            </div>
+
+            <p id="import-status" role="status" aria-live="polite"></p>
+
+            <ul id="results" aria-live="polite"></ul>
+
+            <div class="actions">
+                <button type="submit" class="primary" id="import-btn">Import</button>
+                <button type="button" class="primary" id="download-example" style="background:var(--bg);color:var(--accent);border-color:var(--border-strong)">Download example CSV</button>
+                <a class="back-link" href="/">Cancel</a>
+            </div>
+        </form>
+
+        <details class="reference">
+            <summary>Reference: allowed values for label columns</summary>
+            <div class="ref-grid">
+                {% for name, label in [
+                    ("media_format", "media_format"),
+                    ("genre", "genre"),
+                    ("condition", "condition"),
+                    ("shipping", "shipping"),
+                    ("country", "country"),
+                    ("subtitles", "subtitles"),
+                    ("region", "region"),
+                    ("packaging", "packaging"),
+                    ("discount_info", "discount_info (or 0)"),
+                ] %}
+                    <div class="ref-col">
+                        <h3>{{ label }}</h3>
+                        <ul>
+                            {% for opt in config|attr(name) %}<li>{{ opt.label }}</li>{% endfor %}
+                        </ul>
+                    </div>
+                {% endfor %}
+            </div>
+        </details>
+    </main>
+
+    <script>
+        (() => {
+            const config = {{ config.model_dump() | tojson }};
+            const form = document.getElementById("csv-form");
+            const importBtn = document.getElementById("import-btn");
+            const downloadExampleBtn = document.getElementById("download-example");
+            const statusEl = document.getElementById("import-status");
+            const resultsEl = document.getElementById("results");
+            const progressWrap = document.getElementById("progress-wrap");
+            const progressBar = document.getElementById("progress-bar");
+            const progressFill = document.getElementById("progress-fill");
+            const progressText = document.getElementById("progress-text");
+            const csvInput = document.getElementById("csv-file");
+            const imagesInput = document.getElementById("import-images");
+            const csvDropzone = document.getElementById("csv-dropzone");
+            const imagesDropzone = document.getElementById("images-dropzone");
+            const selectedEl = document.getElementById("selected-files");
+
+            const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
+
+            const setFieldError = (name, message) => {
+                const err = document.getElementById(name + "-error");
+                err.textContent = message;
+                const zone = name === "csv" ? csvDropzone : imagesDropzone;
+                if (message) zone.classList.add("invalid");
+                else zone.classList.remove("invalid");
+            };
+            const formatSize = (bytes) => {
+                if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + " KB";
+                return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+            };
+
+            let csvFile = null;
+            let imageFiles = [];
+            let revokeUrls = [];
+
+            const removeAllUrls = () => {
+                revokeUrls.forEach((u) => URL.revokeObjectURL(u));
+                revokeUrls = [];
+            };
+
+            function renderFiles() {
+                selectedEl.replaceChildren();
+                removeAllUrls();
+                for (const file of imageFiles) {
+                    const li = document.createElement("li");
+                    const img = document.createElement("img");
+                    const url = URL.createObjectURL(file);
+                    revokeUrls.push(url);
+                    img.src = url;
+                    img.alt = "";
+                    const name = document.createElement("span");
+                    name.className = "name";
+                    name.textContent = file.name;
+                    const size = document.createElement("span");
+                    size.className = "size";
+                    size.textContent = formatSize(file.size);
+                    const remove = document.createElement("button");
+                    remove.type = "button";
+                    remove.className = "remove";
+                    remove.setAttribute("aria-label", "Remove " + file.name);
+                    remove.textContent = "×";
+                    remove.addEventListener("click", () => {
+                        imageFiles = imageFiles.filter((f) => f !== file);
+                        renderFiles();
+                        setFieldError("images", "");
+                    });
+                    li.append(img, name, size, remove);
+                    selectedEl.appendChild(li);
+                }
+            }
+
+            csvInput.addEventListener("change", () => {
+                csvFile = csvInput.files[0] || null;
+                setFieldError("csv", "");
+            });
+            imagesInput.addEventListener("change", () => {
+                imageFiles = Array.from(imagesInput.files);
+                const oversized = imageFiles.filter((f) => f.size > MAX_IMAGE_SIZE);
+                if (oversized.length) {
+                    setFieldError("images",
+                        "Ignored files over 10 MB: " + oversized.map((f) => f.name).join(", "));
+                    imageFiles = imageFiles.filter((f) => f.size <= MAX_IMAGE_SIZE);
+                } else {
+                    setFieldError("images", "");
+                }
+                renderFiles();
+            });
+
+            ["dragenter", "dragover"].forEach((evt) => {
+                csvDropzone.addEventListener(evt, (e) => { e.preventDefault(); csvDropzone.classList.add("drag"); });
+                imagesDropzone.addEventListener(evt, (e) => { e.preventDefault(); imagesDropzone.classList.add("drag"); });
+            });
+            ["dragleave", "drop"].forEach((evt) => {
+                csvDropzone.addEventListener(evt, (e) => { e.preventDefault(); csvDropzone.classList.remove("drag"); });
+                imagesDropzone.addEventListener(evt, (e) => { e.preventDefault(); imagesDropzone.classList.remove("drag"); });
+            });
+            csvDropzone.addEventListener("drop", (e) => {
+                const files = Array.from(e.dataTransfer.files);
+                const csv = files.find((f) => f.type === "text/csv" || /\.csv$/i.test(f.name));
+                if (csv) {
+                    csvInput.files = e.dataTransfer.files;
+                    csvFile = csv;
+                    setFieldError("csv", "");
+                } else {
+                    setFieldError("csv", "Drop a .csv file.");
+                }
+            });
+            imagesDropzone.addEventListener("drop", (e) => {
+                const accepted = Array.from(e.dataTransfer.files).filter((f) => f.type.startsWith("image/"));
+                imageFiles = imageFiles.concat(accepted);
+                const oversized = imageFiles.filter((f) => f.size > MAX_IMAGE_SIZE);
+                if (oversized.length) {
+                    setFieldError("images", "Ignored files over 10 MB: " + oversized.map((f) => f.name).join(", "));
+                    imageFiles = imageFiles.filter((f) => f.size <= MAX_IMAGE_SIZE);
+                } else {
+                    setFieldError("images", "");
+                }
+                renderFiles();
+            });
+
+            function errorMessage(data, status) {
+                if (!data) return "HTTP " + status;
+                if (typeof data.detail === "string") return data.detail;
+                if (Array.isArray(data.detail)) return data.detail.map((d) => d.msg).join(", ");
+                return JSON.stringify(data);
+            }
+
+            function setProgress(current, total) {
+                const pct = total ? Math.round((current / total) * 100) : 100;
+                progressBar.setAttribute("aria-valuenow", String(pct));
+                progressFill.style.width = pct + "%";
+                progressText.textContent = "Uploading images " + Math.min(current, total) + " of " + total + "…";
+            }
+
+            function addResult(label, message, ok) {
+                const li = document.createElement("li");
+                li.textContent = (ok ? "✓" : "✗") + " " + label + (message ? " – " + message : "");
+                li.style.color = ok ? "var(--success)" : "var(--danger)";
+                resultsEl.prepend(li);
+            }
+
+            function setStatus(message, cls) {
+                statusEl.className = cls || "";
+                statusEl.textContent = message;
+            }
+
+            downloadExampleBtn.addEventListener("click", () => {
+                const headers = [
+                    "title", "description", "quantity", "price", "offers_allowed", "slipcover",
+                    "discount_info", "shipping", "country", "subtitles", "region", "condition",
+                    "packaging", "media_format", "genre", "images",
+                ];
+                const row = [
+                    "The Katy", "Great shape", "1", "3.8", "0", "1", "0",
+                    config.shipping[0].label, config.country[0].label, config.subtitles[0].label,
+                    config.region[0].label, config.condition[0].label, config.packaging[0].label,
+                    config.media_format[0].label, config.genre[0].label, "fullsize:front.jpg",
+                ];
+                const content = headers.join("|") + "|\n" + row.join("|") + "|" + "0" + "\n";
+                const blob = new Blob([content], { type: "text/csv" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "huutoapp_example.csv";
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+            });
+
+            form.addEventListener("submit", async (e) => {
+                e.preventDefault();
+                if (importBtn.disabled) return;
+
+                setFieldError("csv", "");
+                setFieldError("images", "");
+                if (!csvFile) {
+                    setFieldError("csv", "Choose a CSV file to import.");
+                    csvDropzone.focus();
+                    return;
+                }
+                const oversized = imageFiles.filter((f) => f.size > MAX_IMAGE_SIZE);
+                if (oversized.length) {
+                    setFieldError("images", "Remove files over 10 MB: " + oversized.map((f) => f.name).join(", "));
+                    imagesDropzone.focus();
+                    return;
+                }
+
+                importBtn.disabled = true;
+                resultsEl.replaceChildren();
+                setStatus("");
+
+                try {
+                    if (imageFiles.length) {
+                        setProgress(0, imageFiles.length);
+                        progressWrap.hidden = false;
+                        for (let i = 0; i < imageFiles.length; i++) {
+                            const file = imageFiles[i];
+                            setStatus("Uploading image " + (i + 1) + " of " + imageFiles.length + "…");
+                            setProgress(i + 1, imageFiles.length);
+                            const fd = new FormData();
+                            fd.append("images", file, file.name);
+                            const res = await fetch("/api/v1/items/publish/csvimages", {
+                                method: "PATCH",
+                                body: fd,
+                            });
+                            if (!res.ok) {
+                                throw new Error("image " + file.name + ": " + errorMessage(await res.json().catch(() => null), res.status));
+                            }
+                            const body = await res.json();
+                            const failed = (body.fail || []).length;
+                            if (failed) {
+                                const reason = body.fail.map((f) => f.original_image_name + " (" + f.reason + ")").join(", ");
+                                throw new Error("image upload failed: " + reason);
+                            }
+                            const uploaded = (body.success || []).map((s) => s.new_image_name);
+                            for (const name of uploaded) addResult(name, "", true);
+                        }
+                        progressWrap.hidden = true;
+                        setStatus("Images imported. Importing CSV…");
+                    }
+
+                    const fd = new FormData();
+                    const csvBlob = new File([csvFile], csvFile.name, { type: "text/csv" });
+                    fd.append("csv", csvBlob, csvBlob.name);
+                    setStatus("Importing CSV…");
+                    const res = await fetch("/api/v1/items/publish/csv", {
+                        method: "POST",
+                        body: fd,
+                    });
+                    const body = await res.json().catch(() => null);
+                    if (!res.ok) {
+                        throw new Error(errorMessage(body, res.status));
+                    }
+                    const okCount = (body.success || []).length;
+                    const failList = body.fail || [];
+                    for (const s of body.success || []) {
+                        addResult(s.title, "queued for publishing (task " + s.task_id + ")", true);
+                    }
+                    for (const f of failList) {
+                        addResult(f.title, f.reason, false);
+                    }
+                    if (failList.length) {
+                        setStatus("CSV imported: " + okCount + " succeeded, " + failList.length + " failed.", "error");
+                    } else {
+                        setStatus("CSV imported: " + okCount + " item(s) queued for publishing.", "ok");
+                    }
+                    importBtn.disabled = false;
+                } catch (err) {
+                    progressWrap.hidden = true;
+                    setStatus("Import failed – " + err.message + ". No CSV rows were imported.", "error");
+                    importBtn.disabled = false;
+                }
+            });
+        })();
+    </script>
+</body>
+</html>

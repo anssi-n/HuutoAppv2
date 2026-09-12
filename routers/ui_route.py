@@ -72,3 +72,16 @@ async def new_item(request: Request,
         name="new_item.html",
         context={"config": config}
     )
+
+
+@router.get("/import", include_in_schema=False)
+async def import_csv_page(request: Request,
+                          db: Annotated[AsyncSession, Depends(get_db)]):
+
+    config = await get_item_config(db)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="csv_import.html",
+        context={"config": config}
+    )
