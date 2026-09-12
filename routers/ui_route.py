@@ -1,7 +1,7 @@
 import math
 
-from fastapi.responses import HTMLResponse
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import APIRouter, Depends, Query, Request, status
 from fastapi.templating import Jinja2Templates
 from typing import Annotated
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,10 +10,19 @@ from models import items_model
 from item_config import get_item_config
 from routers.items_route import fetch_items
 from schemas import items_schema
+from config import settings
 
 router = APIRouter()
 
 templates = Jinja2Templates(directory="templates")
+
+
+@router.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return RedirectResponse(
+        f"/media/icons/{settings.favicon_file}",
+        status_code=status.HTTP_308_PERMANENT_REDIRECT,
+    )
 
 
 @router.get("/", include_in_schema=False, response_class=HTMLResponse)
@@ -57,6 +66,7 @@ async def home(request: Request,
             "mf_filter": str(media_format_id) if media_format_id is not None else "",
             "genre_filter": str(genre_id) if genre_id is not None else "",
             "cond_filter": str(condition_id) if condition_id is not None else "",
+            "favicon_file": settings.favicon_file,
         }
     )
 
@@ -70,7 +80,7 @@ async def new_item(request: Request,
     return templates.TemplateResponse(
         request=request,
         name="new_item.html",
-        context={"config": config}
+        context={"config": config, "favicon_file": settings.favicon_file}
     )
 
 
@@ -83,5 +93,5 @@ async def import_csv_page(request: Request,
     return templates.TemplateResponse(
         request=request,
         name="csv_import.html",
-        context={"config": config}
+        context={"config": config, "favicon_file": settings.favicon_file}
     )
