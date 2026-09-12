@@ -195,6 +195,14 @@
         }
         .btn-reset:hover { background: #f2f5fa; color: var(--text); }
         .btn-reset:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+        td.num a, #details-meta dd a {
+            color: var(--accent);
+            font-weight: 600;
+            text-decoration: none;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        td.num a:hover, #details-meta dd a:hover { text-decoration: underline; }
         table {
             width: 100%;
             border-collapse: collapse;
@@ -650,7 +658,14 @@
                             <span class="badge open">Open</span>
                         {% endif %}
                     </td>
-                    <td class="num">{{ item.huuto_id if item.huuto_id is not none else "-" }}</td>
+                    <td class="num">
+                        {% if item.huuto_id is not none %}
+                            <a class="huuto-link" href="https://www.huuto.net/kohteet/{{ item.huuto_id }}"
+                               target="_blank" rel="noopener">{{ item.huuto_id }}</a>
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
                     <td class="actions">
                         <button type="button" class="btn-icon"
                                 data-details-id="{{ item.id }}" data-details-title="{{ item.title }}"
@@ -811,6 +826,19 @@
                 dd.textContent = value === null || value === undefined || value === "" ? "–" : String(value);
                 return [dt, dd];
             };
+            const detailsLinkRow = (label, href, value) => {
+                const dt = document.createElement("dt");
+                dt.textContent = label;
+                const dd = document.createElement("dd");
+                const a = document.createElement("a");
+                a.className = "huuto-link";
+                a.href = href;
+                a.target = "_blank";
+                a.rel = "noopener";
+                a.textContent = value === null || value === undefined || value === "" ? "–" : String(value);
+                dd.appendChild(a);
+                return [dt, dd];
+            };
 
             document.getElementById("details-close").addEventListener("click", () => detailsDialog.close());
 
@@ -852,7 +880,11 @@
                         meta.push(...detailsRow("Region", item.region.label));
                         meta.push(...detailsRow("Discount info", item.discount_info ? item.discount_info.label : "–"));
                         meta.push(...detailsRow("Keywords", Array.isArray(item.item_keywords) ? item.item_keywords.join(", ") : "–"));
-                        meta.push(...detailsRow("Huuto ID", item.huuto_id));
+                        if (item.huuto_id != null) {
+                            meta.push(...detailsLinkRow("Huuto ID", `https://www.huuto.net/kohteet/${item.huuto_id}`, item.huuto_id));
+                        } else {
+                            meta.push(...detailsRow("Huuto ID", item.huuto_id));
+                        }
                         meta.push(...detailsRow("Created", item.created_at ? new Date(item.created_at).toLocaleString() : ""));
                         meta.push(...detailsRow("Closing time", item.huuto_closing_time ? new Date(item.huuto_closing_time).toLocaleString() : ""));
                         if (item.imdb_link) {
