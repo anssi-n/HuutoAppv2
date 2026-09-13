@@ -179,6 +179,15 @@
         }
         button:hover { border-color: var(--accent-strong); background: linear-gradient(180deg, var(--accent-hover), var(--accent-strong)); }
         button:active { transform: translateY(1px); box-shadow: none; }
+        .icon-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5rem;
+            line-height: 0;
+            vertical-align: middle;
+        }
+        .icon-btn img { display: block; }
         a, button, input[type="search"] { -webkit-tap-highlight-color: transparent; }
         .btn-reset {
             padding: 0.45rem 0.8rem;
@@ -508,20 +517,22 @@
         .toolbar .btn-import {
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 0.35rem;
             padding: 0.5rem 0.95rem;
-            border: 1px solid var(--border-strong);
-            background: var(--bg);
-            color: var(--text);
+            border: 1px solid var(--accent);
+            background: linear-gradient(180deg, var(--accent), var(--accent-hover));
+            color: #fff;
             border-radius: 8px;
             text-decoration: none;
             white-space: nowrap;
-            font-weight: 500;
+            font-weight: 600;
+            box-shadow: var(--shadow-sm);
             touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
         }
-        .toolbar .btn-import:hover { background: #f0f2f6; border-color: var(--border-strong); }
-        .toolbar .btn-import:active { transform: translateY(1px); }
+        .toolbar .btn-import:hover { border-color: var(--accent-strong); background: linear-gradient(180deg, var(--accent-hover), var(--accent-strong)); }
+        .toolbar .btn-import:active { transform: translateY(1px); box-shadow: none; }
         p.empty {
             margin: 2rem auto;
             padding: 2.5rem 1rem;
@@ -558,7 +569,9 @@
                 <label class="visually-hidden" for="search-input">Search items</label>
                 <input type="search" id="search-input" name="search" value="{{ search }}"
                        placeholder="Search items (e.g. Blade Runner)…" autocomplete="off">
-                <button type="submit">Search</button>
+                <button type="submit" class="icon-btn" aria-label="Search items" title="Search">
+                    <img src="/media/icons/search.png" alt="" width="20" height="20">
+                </button>
             </form>
 
             <form method="get" action="/" class="filters">
@@ -589,15 +602,21 @@
                         {% endfor %}
                     </select>
                 </label>
-                <button type="submit">Filter</button>
+                <button type="submit" class="icon-btn" aria-label="Filter items" title="Filter">
+                    <img src="/media/icons/filter.png" alt="" width="20" height="20">
+                </button>
                 {% if mf_filter or genre_filter or cond_filter %}
                     <a class="btn-reset" href="/?limit={{ limit }}&order_by={{ order_by }}{% if search %}&search={{ search }}{% endif %}">Reset filters</a>
                 {% endif %}
             </form>
             <span class="muted">{{ total }} item{% if total != 1 %}s{% endif %}</span>
             <span class="toolbar-actions">
-                <a class="btn-add" href="/new">Add Item</a>
-                <a class="btn-import" href="/import">Import CSV</a>
+                <a class="btn-add icon-btn" href="/new" aria-label="Add item" title="Add item">
+                    <img src="/media/icons/add-item.png" alt="" width="24" height="24">
+                </a>
+                <a class="btn-import icon-btn" href="/import" aria-label="Import CSV" title="Import CSV">
+                    <img src="/media/icons/csvfile.png" alt="" width="20" height="20">
+                </a>
             </span>
         </div>
 
