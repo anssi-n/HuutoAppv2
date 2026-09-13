@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f3f5f9">
+    <link rel="icon" href="/media/icons/{{ favicon_file }}" sizes="32x32">
+    <link rel="icon" type="image/png" sizes="16x16" href="/media/icons/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/media/icons/favicon-32x32.png">
+    <link rel="apple-touch-icon" href="/media/icons/apple-touch-icon.png">
+    <title>Statistics – HuutoApp</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --bg-page: #f3f5f9;
+            --bg: #ffffff;
+            --border: #e4e8f0;
+            --border-strong: #cbd3e1;
+            --muted: #667085;
+            --text: #1f2430;
+            --accent: #4f46e5;
+            --accent-hover: #4338ca;
+            --accent-strong: #3730a3;
+            --accent-soft: #eef2ff;
+            --accent-ring: rgb(79 70 229 / 0.16);
+            --shadow-sm: 0 1px 2px rgb(16 24 40 / 0.05);
+            --shadow-md: 0 2px 6px -1px rgb(16 24 40 / 0.08), 0 16px 36px -12px rgb(16 24 40 / 0.14);
+            --radius: 12px;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 2rem 1.25rem;
+            background: var(--bg-page);
+            background-image:
+                radial-gradient(1100px 480px at 85% -10%, rgb(79 70 229 / 0.1), transparent 60%),
+                radial-gradient(900px 420px at -10% 110%, rgb(37 99 235 / 0.08), transparent 60%);
+            background-attachment: fixed;
+            color: var(--text);
+            overflow-x: hidden;
+            line-height: 1.5;
+            text-rendering: optimizeLegibility;
+        }
+        main {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-md);
+            padding: 1.5rem 1.5rem 2rem;
+            scroll-margin-top: 2rem;
+        }
+        h1 {
+            margin: 0 0 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            font-size: 1.45rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            text-wrap: balance;
+            scroll-margin-top: 2rem;
+        }
+        h1::before {
+            content: "";
+            flex: none;
+            width: 0.7rem;
+            height: 1.4rem;
+            border-radius: 4px;
+            background: linear-gradient(180deg, var(--accent), #2563eb);
+            box-shadow: var(--shadow-sm);
+        }
+        :focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+        .btn-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.45rem 0.8rem;
+            border: 1px solid var(--border-strong);
+            background: var(--bg);
+            color: var(--muted);
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            text-decoration: none;
+            white-space: nowrap;
+            margin-bottom: 1.25rem;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn-back:hover { background: #f2f5fa; color: var(--text); }
+        .btn-back:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+        .grand {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .grand dl {
+            flex: 1 1 14rem;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.15rem;
+            padding: 1.2rem 1.4rem;
+            background: linear-gradient(180deg, var(--accent), var(--accent-hover));
+            color: #fff;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+        }
+        .grand dt {
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: rgb(255 255 255 / 0.85);
+        }
+        .grand dd {
+            margin: 0;
+            font-size: 2rem;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -0.02em;
+        }
+        .stat-group {
+            margin-bottom: 2rem;
+        }
+        .stat-group h2 {
+            margin: 0 0 0.5rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        th, td {
+            padding: 0.7rem 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+        thead th {
+            background: #f6f8fb;
+            color: var(--muted);
+            font-size: 0.72rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            white-space: nowrap;
+            border-bottom: 1px solid var(--border-strong);
+        }
+        tbody tr { transition: background-color 0.12s ease; }
+        tbody tr:hover { background: #f8f9ff; }
+        tbody tr:last-child td { border-bottom: none; }
+        .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .empty { text-align: center; color: var(--muted); padding: 1.5rem 0; }
+        @media (max-width: 700px) {
+            .grand dd { font-size: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <h1>Statistics</h1>
+        <a class="btn-back" href="/">&larr; Back to items</a>
+
+        <section class="grand">
+            <dl>
+                <dt>Total items</dt>
+                <dd>{{ grand_count }}</dd>
+            </dl>
+            <dl>
+                <dt>Grand total price</dt>
+                <dd>&euro;&nbsp;{{ "%.2f"|format(grand_total) }}</dd>
+            </dl>
+        </section>
+
+        <section class="stat-group">
+            <h2>By format</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Format</th>
+                        <th>Items</th>
+                        <th>Total price</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in formats %}
+                    <tr>
+                        <td>{{ row.label }}</td>
+                        <td class="num">{{ row.count }}</td>
+                        <td class="num">&euro;&nbsp;{{ "%.2f"|format(row.total) }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="3" class="empty">No items</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+
+        <section class="stat-group">
+            <h2>By genre</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Genre</th>
+                        <th>Items</th>
+                        <th>Total price</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in genres %}
+                    <tr>
+                        <td>{{ row.label }}</td>
+                        <td class="num">{{ row.count }}</td>
+                        <td class="num">&euro;&nbsp;{{ "%.2f"|format(row.total) }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="3" class="empty">No items</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+
+        <section class="stat-group">
+            <h2>By condition</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Condition</th>
+                        <th>Items</th>
+                        <th>Total price</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in conditions %}
+                    <tr>
+                        <td>{{ row.label }}</td>
+                        <td class="num">{{ row.count }}</td>
+                        <td class="num">&euro;&nbsp;{{ "%.2f"|format(row.total) }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="3" class="empty">No items</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    </main>
+</body>
+</html>

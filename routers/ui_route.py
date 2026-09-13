@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Query, Request, status
 from fastapi.templating import Jinja2Templates
 from typing import Annotated
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
 from db import get_db
 from models import items_model
 from item_config import get_item_config
@@ -94,4 +95,48 @@ async def import_csv_page(request: Request,
         request=request,
         name="csv_import.html",
         context={"config": config, "favicon_file": settings.favicon_file}
+    )
+
+
+@router.get("/stats", include_in_schema=False)
+async def statistics(request: Request,
+                     db: Annotated[AsyncSession, Depends(get_db)]):
+
+    stat_query = {}
+
+    for key, table, join_col in (
+        ("format", items_model.MediaFormat, items_model.HuutoItem.media_format_id),
+        ("genre", items_model.Genre, items_model.HuutoItem.genre_id),
+        ("condition", items_model.Condition, items_model.HuutoItem.condition_id),
+    ):
+        group_cols = [table.label] if key == "genre" else [table.label, table.id]
+        stmt = (
+            select(table.label,
+                   func.count(items_model.HuutoItem.id),
+                   func.sum(items_model.HuutoItem.price))
+            .join(items_model.HuutoItem, join_col == table.id)
+            .group_by(*group_cols)
+            .order_by(func.count(items_model.HuutoItem.id).desc())
+        )
+        rows = (await db.execute(stmt)).all()
+        stat_query[key] = [
+            {"label": r[0], "count": r[1], "total": round(float(r[2] or 0), 2)}
+            for r in rows
+        ]
+
+    grand_count, grand_total = (await db.execute(
+        select(func.count(items_model.HuutoItem.id), func.sum(items_model.HuutoItem.price))
+    )).one()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="statistics.html",
+        context={
+            "formats": stat_query["format"],
+            "genres": stat_query["genre"],
+            "conditions": stat_query["condition"],
+            "grand_count": grand_count or 0,
+            "grand_total": round(float(grand_total or 0), 2),
+            "favicon_file": settings.favicon_file,
+        }
     )
