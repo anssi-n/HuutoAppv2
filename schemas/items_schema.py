@@ -25,16 +25,16 @@ class CsvFile(BaseModel):
             result.append(({k:v for k,v in zip(self.headers, element.title)},element.add_keywords))
         return result
 
-
 class PublishResponse(BaseModel):
     task_id: int
     title: str | None = None
     item_id: int | None = None
-    
+
 class DeleteResponse(BaseModel):
     title: str
     item_id: int
     task_id: int | None = None
+    huuto_only: bool = False
 
 class SuccessResponse(BaseModel):
     title: str

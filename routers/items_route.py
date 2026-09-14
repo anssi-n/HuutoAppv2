@@ -411,9 +411,10 @@ async def delete_all_items(db: Annotated[AsyncSession, Depends(get_db)],
 
 
 @router.delete("/{item_id}", response_model=items_schema.DeleteResponse, status_code=status.HTTP_200_OK)
-async def delete_item(item_id: int, 
-                      db: Annotated[AsyncSession, Depends(get_db)],
-                      redis: Annotated[Redis, Depends(get_redis)]):
+async def delete_item(db: Annotated[AsyncSession, Depends(get_db)],
+                      redis: Annotated[Redis, Depends(get_redis)],
+                      item_id: int, 
+                      close_huuto_only: bool = False ):
 
     result = await db.execute(select(items_model.HuutoItem).where(items_model.HuutoItem.id == item_id))
     item = result.scalars().first()
@@ -423,11 +424,12 @@ async def delete_item(item_id: int,
             detail="Huuto item not found",
         )
 
-    await db.delete(item)
-    await db.commit()
+    if not close_huuto_only:
+        await db.delete(item)
+        await db.commit()
 
-    for image in item.images:
-        delete_image(image.filename)
+        for image in item.images:
+            delete_image(image.filename)
 
     if item.huuto_id:
         task_id = await create_queue_msg(
@@ -444,7 +446,8 @@ async def delete_item(item_id: int,
     return items_schema.DeleteResponse(
         title = item.title,
         item_id = item.id,
-        task_id = task_id
+        task_id = task_id,
+        huuto_only = close_huuto_only
     )
 
 @router.patch("/{item_id}/image", response_model=items_schema.ItemResponse)
