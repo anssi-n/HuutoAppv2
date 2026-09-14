@@ -1,7 +1,8 @@
 import redis
 from config import settings
 from logger import logger
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from db import sync_engine
 from schemas import huutoapp_queue_schema
 from common import common_types
@@ -14,6 +15,8 @@ from sqlalchemy.orm import Session, selectinload
 from models import items_model, task_log_model
 from sqlalchemy.orm.attributes import flag_modified
 
+HELSINKI = ZoneInfo("Europe/Helsinki")
+UTC = ZoneInfo("UTC")
 
 class RetryLimitExceeded(Exception):
     pass
@@ -224,14 +227,14 @@ def get_item(item_id: int) -> items_model.HuutoItem:
 
 def generate_end_time() -> tuple[datetime, str]:
 
-    dt = datetime.now(UTC)
-    dt_new = (dt.replace(day=1) + timedelta(days=32)
-                  ).replace(day=1).replace(hour=12, minute=00, second=00)
+    now = datetime.now(HELSINKI)
+    first_of_next_month = ((now.replace(day=1) + timedelta(days=32)).replace(day=1, hour=12, minute=0, second=0, microsecond=0))
+    end_time_utc = first_of_next_month.astimezone(UTC)    
 
-    if (dt_new-dt).days < 1:
-        dt_new = (dt_new.replace(day=1) + timedelta(days=32)).replace(day=1).replace(hour=12, minute=00, second=00)
+    if (end_time_utc-now).days < 1:
+        end_time_utc = (end_time_utc.replace(day=1) + timedelta(days=32)).replace(day=1).replace(hour=12, minute=00, second=00)
         logger.info("Less than one day remaining. New end date and time increased by one month.")
 
-    end_date = f"{str(dt_new.year)}-{str(dt_new.month).zfill(2)}-{str(dt_new.day).zfill(2)} 12:00:00"
+    end_date = f"{str(end_time_utc.year)}-{str(end_time_utc.month).zfill(2)}-{str(end_time_utc.day).zfill(2)} {str(end_time_utc.hour).zfill(2)}:{str(end_time_utc.minute).zfill(2)}:{str(end_time_utc.second).zfill(2)}"
     logger.info(f"Ending date and time for the new item: {end_date}")
-    return dt_new, end_date
+    return end_time_utc, end_date

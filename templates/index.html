@@ -30,11 +30,51 @@
             --success-soft: #e6f7ee;
             --open: #2563eb;
             --open-soft: #e0ecff;
+            --surface: #f6f8fb;
+            --surface-hover: #f0f2f6;
+            --surface-active: #e5e9f0;
+            --row-hover: #f8f9ff;
+            --thumb-bg: #eef1f6;
             --shadow-sm: 0 1px 2px rgb(16 24 40 / 0.05);
             --shadow-md: 0 2px 6px -1px rgb(16 24 40 / 0.08), 0 16px 36px -12px rgb(16 24 40 / 0.14);
             --shadow-lg: 0 24px 64px -16px rgb(16 24 40 / 0.3);
             --radius: 12px;
         }
+        [data-theme="dark"] {
+            color-scheme: dark;
+            --bg-page: #151922;
+            --bg: #1b202b;
+            --border: #2a3040;
+            --border-strong: #39415a;
+            --muted: #98a2b8;
+            --text: #e7eaf2;
+            --accent: #7c82f5;
+            --accent-hover: #9499f8;
+            --accent-strong: #b0b4fb;
+            --accent-soft: #262b4d;
+            --accent-ring: rgb(124 130 245 / 0.28);
+            --danger: #f87171;
+            --danger-hover: #ef4444;
+            --danger-soft: #3c2028;
+            --success: #34d399;
+            --success-soft: #123529;
+            --open: #60a5fa;
+            --open-soft: #1c2f4c;
+            --surface: #202634;
+            --surface-hover: #262d3d;
+            --surface-active: #2b3345;
+            --row-hover: #222a39;
+            --thumb-bg: #232a3b;
+            --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.35);
+            --shadow-md: 0 2px 6px -1px rgb(0 0 0 / 0.45), 0 16px 36px -12px rgb(0 0 0 / 0.55);
+            --shadow-lg: 0 24px 64px -16px rgb(0 0 0 / 0.6);
+        }
+        [data-theme="dark"] body {
+            background-image:
+                radial-gradient(1100px 480px at 85% -10%, rgb(124 130 245 / 0.16), transparent 60%),
+                radial-gradient(900px 420px at -10% 110%, rgb(96 165 250 / 0.1), transparent 60%);
+        }
+        [data-theme="dark"] dialog::backdrop { background: rgb(0 0 0 / 0.62); }
         * { box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -113,6 +153,39 @@
             outline: 2px solid var(--accent);
             outline-offset: 2px;
         }
+        .theme-toggle {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 40;
+            width: 2.6rem;
+            height: 2.6rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border-strong);
+            background: var(--bg);
+            color: var(--text);
+            border-radius: 999px;
+            cursor: pointer;
+            box-shadow: var(--shadow-md);
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .theme-toggle:hover { border-color: var(--accent); }
+        .theme-toggle svg {
+            width: 1.2rem;
+            height: 1.2rem;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .icon-moon { display: block; }
+        .icon-sun { display: none; }
+        [data-theme="dark"] .icon-moon { display: none; }
+        [data-theme="dark"] .icon-sun { display: block; }
         .toolbar {
             display: flex;
             justify-content: space-between;
@@ -202,7 +275,7 @@
             touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
         }
-        .btn-reset:hover { background: #f2f5fa; color: var(--text); }
+        .btn-reset:hover { background: var(--surface-hover); color: var(--text); }
         .btn-reset:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
         td.num a, #details-meta dd a {
             color: var(--accent);
@@ -224,7 +297,7 @@
             vertical-align: middle;
         }
         thead th {
-            background: #f6f8fb;
+            background: var(--surface);
             color: var(--muted);
             font-size: 0.72rem;
             font-weight: 600;
@@ -234,7 +307,7 @@
             border-bottom: 1px solid var(--border-strong);
         }
         tbody tr { transition: background-color 0.12s ease; }
-        tbody tr:hover { background: #f8f9ff; }
+        tbody tr:hover { background: var(--row-hover); }
         tbody tr:last-child td { border-bottom: none; }
         .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
         .thumb {
@@ -243,7 +316,7 @@
             object-fit: cover;
             border-radius: 8px;
             border: 1px solid var(--border);
-            background: #eef1f6;
+            background: var(--thumb-bg);
             box-shadow: var(--shadow-sm);
             display: block;
         }
@@ -261,9 +334,9 @@
             font-size: 0.75rem;
             font-weight: 600;
         }
-        .badge.sold { background: var(--success-soft); color: var(--success); }
+        .badge.closed { background: var(--success-soft); color: var(--success); }
         .badge.open { background: var(--open-soft); color: var(--open); }
-        .badge.draft { background: #eef1f6; color: var(--muted); }
+        .badge.draft { background: var(--thumb-bg); color: var(--muted); }
         .actions { white-space: nowrap; }
         .actions .btn-icon:not(:last-child) { margin-right: 0.5rem; }
         .btn-icon, .btn-delete {
@@ -279,11 +352,11 @@
             -webkit-tap-highlight-color: transparent;
         }
         .btn-icon img { display: block; border-radius: 4px; }
-        .btn-icon:hover { background: #f0f2f6; border-color: var(--border); }
-        .btn-icon:active { background: #e5e9f0; }
+        .btn-icon:hover { background: var(--surface-hover); border-color: var(--border); }
+        .btn-icon:active { background: var(--surface-active); }
         .btn-delete img { display: block; border-radius: 4px; }
         .btn-delete:hover { background: var(--danger-soft); border-color: var(--danger); }
-        .btn-delete:active { background: #fde3e3; }
+        .btn-delete:active { background: var(--danger-soft); }
         .btn-publish {
             display: inline-flex;
             align-items: center;
@@ -304,7 +377,7 @@
             transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
         }
         .btn-publish:hover { background: var(--accent-soft); box-shadow: 0 0 0 3px var(--accent-ring); }
-        .btn-publish:active { background: #dfe6fd; }
+        .btn-publish:active { background: var(--open-soft); }
         .btn-primary {
             padding: 0.5rem 0.95rem;
             border: 1px solid var(--accent);
@@ -425,7 +498,7 @@
             touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
         }
-        .btn-secondary:hover { background: #f0f2f6; }
+        .btn-secondary:hover { background: var(--surface-hover); }
         .btn-danger {
             padding: 0.5rem 0.9rem;
             border: 1px solid var(--danger);
@@ -553,9 +626,21 @@
             button:active, .btn-danger:active, .btn-add:active, .pagination a:active:not(.disabled) { transform: none; }
         }
     </style>
+    <script>
+        (() => {
+            const saved = localStorage.getItem("huutoapp-theme");
+            const dark = saved === "dark" || (saved === null && window.matchMedia("(prefers-color-scheme: dark)").matches);
+            document.documentElement.dataset.theme = dark ? "dark" : "light";
+        })();
+    </script>
 </head>
 <body>
     <a class="skip-link" href="#main">Skip to content</a>
+
+    <button type="button" id="theme-toggle" class="theme-toggle" aria-label="Toggle light or dark theme" title="Toggle light or dark theme">
+        <svg class="icon-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg class="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
 
     <main id="main">
         <h1><span translate="no">HuutoApp</span> · Items</h1>
@@ -675,7 +760,7 @@
                         {% if item.closed is none %}
                             <span class="badge draft">Draft</span>
                         {% elif item.closed %}
-                            <span class="badge sold">Sold</span>
+                            <span class="badge closed">Closed</span>
                         {% else %}
                             <span class="badge open">Open</span>
                         {% endif %}
@@ -755,6 +840,10 @@
                 published, it will also be closed on <span translate="no">Huuto.net</span>.
                 This cannot be undone.
             </p>
+            <label class="check" for="delete-close-huuto">
+                <input type="checkbox" id="delete-close-huuto">
+                Close from <span translate="no">Huuto.net</span> only
+            </label>
             <div class="dialog-actions">
                 <button type="submit" class="btn-secondary" value="cancel" autofocus>Cancel</button>
                 <button type="submit" class="btn-danger" value="delete">Delete</button>
@@ -890,7 +979,7 @@
                         meta.push(...detailsRow("Description", item.description, "desc"));
                         meta.push(...detailsRow("Price", detailsPrice(item.price), "price-big"));
                         meta.push(...detailsRow("Quantity", item.quantity));
-                        meta.push(...detailsRow("Status", item.closed === null ? "Draft" : (item.closed ? "Sold" : "Open")));
+                        meta.push(...detailsRow("Status", item.closed === null ? "Draft" : (item.closed ? "Closed" : "Open")));
                         meta.push(...detailsRow("Media format", item.media_format.label));
                         meta.push(...detailsRow("Genre", item.genre.label));
                         meta.push(...detailsRow("Condition", item.condition.label));
@@ -932,12 +1021,14 @@
             const dialog = document.getElementById("delete-dialog");
             const titleEl = document.getElementById("delete-title");
             const statusEl = document.getElementById("delete-status");
+            const closeHuutoEl = document.getElementById("delete-close-huuto");
             let pendingId = null;
 
             for (const btn of document.querySelectorAll("[data-delete-id]")) {
                 btn.addEventListener("click", () => {
                     pendingId = btn.dataset.deleteId;
                     titleEl.textContent = btn.dataset.deleteTitle;
+                    closeHuutoEl.checked = false;
                     dialog.showModal();
                 });
             }
@@ -950,7 +1041,8 @@
 
                 statusEl.textContent = "Deleting…";
                 try {
-                    const response = await fetch(`/api/v1/items/${id}`, { method: "DELETE" });
+                    const closeHuuto = closeHuutoEl.checked ? 1 : 0;
+                const response = await fetch(`/api/v1/items/${id}?close_huuto_only=${closeHuuto}`, { method: "DELETE" });
                     if (!response.ok) {
                         throw new Error(`Server returned ${response.status}`);
                     }
@@ -998,6 +1090,24 @@
                     console.error(err);
                 }
             });
+        })();
+    </script>
+    <script>
+        (() => {
+            const btn = document.getElementById("theme-toggle");
+            if (!btn) return;
+            const meta = document.querySelector('meta[name="theme-color"]');
+            const set = (dark) => {
+                document.documentElement.dataset.theme = dark ? "dark" : "light";
+                btn.setAttribute("aria-pressed", dark ? "true" : "false");
+                if (meta) meta.setAttribute("content", dark ? "#151922" : "#f3f5f9");
+            };
+            btn.addEventListener("click", () => {
+                const dark = document.documentElement.dataset.theme !== "dark";
+                localStorage.setItem("huutoapp-theme", dark ? "dark" : "light");
+                set(dark);
+            });
+            set(document.documentElement.dataset.theme === "dark");
         })();
     </script>
 </body>

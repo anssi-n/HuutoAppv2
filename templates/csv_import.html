@@ -28,9 +28,47 @@
             --danger-soft: #fef2f2;
             --success: #0f9d58;
             --success-soft: #e6f7ee;
+            --surface: #f6f8fb;
+            --surface-hover: #f0f2f6;
+            --surface-active: #e5e9f0;
+            --row-hover: #f8f9ff;
+            --thumb-bg: #eef1f6;
             --shadow-sm: 0 1px 2px rgb(16 24 40 / 0.05);
             --shadow-md: 0 2px 6px -1px rgb(16 24 40 / 0.08), 0 16px 36px -12px rgb(16 24 40 / 0.14);
             --radius: 12px;
+        }
+        [data-theme="dark"] {
+            color-scheme: dark;
+            --bg-page: #151922;
+            --bg: #1b202b;
+            --border: #2a3040;
+            --border-strong: #39415a;
+            --muted: #98a2b8;
+            --text: #e7eaf2;
+            --accent: #7c82f5;
+            --accent-hover: #9499f8;
+            --accent-strong: #b0b4fb;
+            --accent-soft: #262b4d;
+            --accent-ring: rgb(124 130 245 / 0.28);
+            --danger: #f87171;
+            --danger-hover: #ef4444;
+            --danger-soft: #3c2028;
+            --success: #34d399;
+            --success-soft: #123529;
+            --open: #60a5fa;
+            --open-soft: #1c2f4c;
+            --surface: #202634;
+            --surface-hover: #262d3d;
+            --surface-active: #2b3345;
+            --row-hover: #222a39;
+            --thumb-bg: #232a3b;
+            --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.35);
+            --shadow-md: 0 2px 6px -1px rgb(0 0 0 / 0.45), 0 16px 36px -12px rgb(0 0 0 / 0.55);
+        }
+        [data-theme="dark"] body {
+            background-image:
+                radial-gradient(1100px 480px at 85% -10%, rgb(124 130 245 / 0.16), transparent 60%),
+                radial-gradient(900px 420px at -10% 110%, rgb(96 165 250 / 0.1), transparent 60%);
         }
         * { box-sizing: border-box; }
         body {
@@ -79,6 +117,39 @@
             outline: 2px solid var(--accent);
             outline-offset: 2px;
         }
+        .theme-toggle {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 40;
+            width: 2.6rem;
+            height: 2.6rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border-strong);
+            background: var(--bg);
+            color: var(--text);
+            border-radius: 999px;
+            cursor: pointer;
+            box-shadow: var(--shadow-md);
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .theme-toggle:hover { border-color: var(--accent); }
+        .theme-toggle svg {
+            width: 1.2rem;
+            height: 1.2rem;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .icon-moon { display: block; }
+        .icon-sun { display: none; }
+        [data-theme="dark"] .icon-moon { display: none; }
+        [data-theme="dark"] .icon-sun { display: block; }
         main {
             max-width: 62rem;
             margin: 0 auto;
@@ -134,7 +205,7 @@
         .section p, .section ul { margin: 0.3rem 0; font-size: 0.85rem; color: var(--muted); }
         .section ul { padding-left: 1.2rem; }
         .section code {
-            background: #e8ebf2;
+            background: var(--surface);
             border-radius: 4px;
             padding: 0.05rem 0.35rem;
             font-size: 0.8em;
@@ -226,7 +297,7 @@
             height: 40px;
             object-fit: cover;
             border-radius: 6px;
-            background: #eef1f6;
+            background: var(--thumb-bg);
             display: block;
         }
         #selected-files li .name {
@@ -278,7 +349,7 @@
             color: var(--text);
             font-weight: 500;
         }
-        .sbtn:hover:not(:disabled) { background: #f0f2f6; }
+        .sbtn:hover:not(:disabled) { background: var(--surface-hover); }
         .pbtn:active:not(:disabled), .sbtn:active:not(:disabled) { transform: translateY(1px); }
         .pbtn:disabled, .sbtn:disabled { opacity: 0.6; cursor: default; }
 
@@ -311,7 +382,7 @@
             font-size: 0.75rem;
             font-weight: 600;
         }
-        .row-actions button:hover { background: #f0f2f6; color: var(--text); }
+        .row-actions button:hover { background: var(--surface-hover); color: var(--text); }
         .row-actions button.danger:hover { background: var(--danger-soft); color: var(--danger); border-color: var(--danger); }
 
         .rg {
@@ -383,7 +454,7 @@
             object-fit: cover;
             border-radius: 6px;
             border: 1px solid var(--border);
-            background: #eef1f6;
+            background: var(--thumb-bg);
             display: block;
         }
         .row-previews .tag {
@@ -421,7 +492,7 @@
         .progress-bar {
             height: 0.6rem;
             border-radius: 999px;
-            background: #e8ebf2;
+            background: var(--surface);
             overflow: hidden;
         }
         .progress-bar .fill {
@@ -522,9 +593,21 @@
             .ref-grid { grid-template-columns: 1fr; }
         }
     </style>
+    <script>
+        (() => {
+            const saved = localStorage.getItem("huutoapp-theme");
+            const dark = saved === "dark" || (saved === null && window.matchMedia("(prefers-color-scheme: dark)").matches);
+            document.documentElement.dataset.theme = dark ? "dark" : "light";
+        })();
+    </script>
 </head>
 <body>
     <a class="skip-link" href="#main">Skip to content</a>
+
+    <button type="button" id="theme-toggle" class="theme-toggle" aria-label="Toggle light or dark theme" title="Toggle light or dark theme">
+        <svg class="icon-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg class="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
 
     <main id="main">
         <h1><span translate="no">HuutoApp</span> · Import CSV</h1>
@@ -1195,6 +1278,24 @@
                     importBtn.disabled = false;
                 }
             });
+        })();
+    </script>
+    <script>
+        (() => {
+            const btn = document.getElementById("theme-toggle");
+            if (!btn) return;
+            const meta = document.querySelector('meta[name="theme-color"]');
+            const set = (dark) => {
+                document.documentElement.dataset.theme = dark ? "dark" : "light";
+                btn.setAttribute("aria-pressed", dark ? "true" : "false");
+                if (meta) meta.setAttribute("content", dark ? "#151922" : "#f3f5f9");
+            };
+            btn.addEventListener("click", () => {
+                const dark = document.documentElement.dataset.theme !== "dark";
+                localStorage.setItem("huutoapp-theme", dark ? "dark" : "light");
+                set(dark);
+            });
+            set(document.documentElement.dataset.theme === "dark");
         })();
     </script>
 </body>
