@@ -360,24 +360,21 @@
         .btn-publish {
             display: inline-flex;
             align-items: center;
-            gap: 0.3rem;
-            padding: 0.35rem 0.65rem;
+            justify-content: center;
+            padding: 0.4rem;
             margin-right: 0.5rem;
             border: 1px solid var(--accent);
-            background: var(--bg);
-            color: var(--accent);
+            background: linear-gradient(180deg, var(--accent), var(--accent-hover));
             border-radius: 8px;
             cursor: pointer;
-            font: inherit;
-            font-size: 0.8rem;
-            font-weight: 600;
-            white-space: nowrap;
+            box-shadow: var(--shadow-sm);
             touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
             transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
         }
-        .btn-publish:hover { background: var(--accent-soft); box-shadow: 0 0 0 3px var(--accent-ring); }
-        .btn-publish:active { background: var(--open-soft); }
+        .btn-publish img { display: block; border-radius: 4px; }
+        .btn-publish:hover { border-color: var(--accent-strong); background: linear-gradient(180deg, var(--accent-hover), var(--accent-strong)); box-shadow: var(--shadow-sm); }
+        .btn-publish:active { transform: translateY(1px); box-shadow: none; }
         .btn-primary {
             padding: 0.5rem 0.95rem;
             border: 1px solid var(--accent);
@@ -687,15 +684,29 @@
                         {% endfor %}
                     </select>
                 </label>
+                <label for="filter-status">Status
+                    <select id="filter-status" name="status">
+                        <option value="">All statuses</option>
+                        <option value="open"{% if status_filter == "open" %} selected{% endif %}>Open</option>
+                        <option value="closed"{% if status_filter == "closed" %} selected{% endif %}>Closed</option>
+                        <option value="draft"{% if status_filter == "draft" %} selected{% endif %}>Draft</option>
+                    </select>
+                </label>
                 <button type="submit" class="icon-btn" aria-label="Filter items" title="Filter">
                     <img src="/media/icons/filter.png" alt="" width="20" height="20">
                 </button>
-                {% if mf_filter or genre_filter or cond_filter %}
+                {% if mf_filter or genre_filter or cond_filter or status_filter %}
                     <a class="btn-reset" href="/?limit={{ limit }}&order_by={{ order_by }}{% if search %}&search={{ search }}{% endif %}">Reset filters</a>
                 {% endif %}
             </form>
             <span class="muted">{{ total }} item{% if total != 1 %}s{% endif %}</span>
             <span class="toolbar-actions">
+                {% if publish_all_count %}
+                    <button type="button" id="publish-all-btn" class="btn-import icon-btn"
+                            aria-label="Publish all drafts and closed items" title="Publish all drafts and closed items">
+                        <img src="/media/icons/publish.png" alt="" width="20" height="20">
+                    </button>
+                {% endif %}
                 <a class="btn-add icon-btn" href="/new" aria-label="Add item" title="Add item">
                     <img src="/media/icons/add-item.png" alt="" width="24" height="24">
                 </a>
@@ -709,8 +720,9 @@
         </div>
 
         <p id="delete-status" role="status" aria-live="polite"></p>
+        <p id="publish-all-status" role="status" aria-live="polite"></p>
 
-        {% macro filter_qs() -%}{% if mf_filter %}&media_format_id={{ mf_filter }}{% endif %}{% if genre_filter %}&genre_id={{ genre_filter }}{% endif %}{% if cond_filter %}&condition_id={{ cond_filter }}{% endif %}{%- endmacro %}
+        {% macro filter_qs() -%}{% if mf_filter %}&media_format_id={{ mf_filter }}{% endif %}{% if genre_filter %}&genre_id={{ genre_filter }}{% endif %}{% if cond_filter %}&condition_id={{ cond_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{%- endmacro %}
         {% macro page_url(skip) -%}/?skip={{ skip }}&limit={{ limit }}&order_by={{ order_by }}{% if search %}&search={{ search }}{% endif %}{{ filter_qs() }}{%- endmacro %}
 
         {% macro sort_header(col, label, extra_class="") -%}
@@ -779,11 +791,11 @@
                                 aria-label="View details of {{ item.title }}">
                             <img src="/media/icons/details-icon.png" alt="" width="16" height="16">
                         </button>
-                        {% if item.huuto_id is none %}
+                        {% if item.huuto_id is none or item.closed %}
                             <button type="button" class="btn-publish"
                                     data-publish-id="{{ item.id }}" data-publish-title="{{ item.title }}"
-                                    aria-label="Publish {{ item.title }}">
-                                Publish
+                                    aria-label="Publish {{ item.title }}" title="Publish {{ item.title }}">
+                                <img src="/media/icons/publish.png" alt="" width="16" height="16">
                             </button>
                         {% endif %}
                         <button type="button" class="btn-delete"
@@ -1090,6 +1102,27 @@
                     console.error(err);
                 }
             });
+
+            const publishAllBtn = document.getElementById("publish-all-btn");
+            const publishAllStatusEl = document.getElementById("publish-all-status");
+            if (publishAllBtn) {
+                publishAllBtn.addEventListener("click", async () => {
+                    publishAllBtn.disabled = true;
+                    if (publishAllStatusEl) publishAllStatusEl.textContent = "Publishing all drafts and closed items…";
+                    try {
+                        const response = await fetch("/api/v1/items/publish/all", { method: "POST" });
+                        if (!response.ok) {
+                            throw new Error(`Server returned ${response.status}`);
+                        }
+                        if (publishAllStatusEl) publishAllStatusEl.textContent = "Publish queued for all drafts and closed items.";
+                        window.location.reload();
+                    } catch (err) {
+                        if (publishAllStatusEl) publishAllStatusEl.textContent = `Publish all failed: ${err.message}. Please try again.`;
+                        publishAllBtn.disabled = false;
+                        console.error(err);
+                    }
+                });
+            }
         })();
     </script>
     <script>

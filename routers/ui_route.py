@@ -1,11 +1,12 @@
 import math
+from datetime import UTC, datetime
 
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi import APIRouter, Depends, Query, Request, status
 from fastapi.templating import Jinja2Templates
 from typing import Annotated
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
 from db import get_db
 from models import items_model
 from item_config import get_item_config
@@ -35,15 +36,25 @@ async def home(request: Request,
                order_by: Annotated[str, Query(pattern=items_model.order_by_pattern)] = "title",
                media_format_id: Annotated[int | None, Query()] = None,
                genre_id: Annotated[int | None, Query()] = None,
-               condition_id: Annotated[int | None, Query()] = None):
+               condition_id: Annotated[int | None, Query()] = None,
+               status: Annotated[str | None, Query(pattern="^(open|closed|draft)?$")] = None):
 
     items, total, has_more = await fetch_items(db, skip, limit, search, order_by,
-                                               media_format_id, genre_id, condition_id)
+                                               media_format_id, genre_id, condition_id,
+                                               status or None)
 
     total_pages = math.ceil(total / limit) if limit else 1
     current_page = min(skip // limit + 1, total_pages) if limit else 1
     pages = [p for p in range(1, total_pages + 1)
              if p == 1 or p == total_pages or abs(p - current_page) <= 2]
+
+    now = datetime.now(UTC)
+    publish_all_count = (await db.execute(
+        select(func.count()).select_from(items_model.HuutoItem).where(or_(
+            items_model.HuutoItem.huuto_id.is_(None),
+            items_model.HuutoItem.huuto_closing_time.is_(None),
+            items_model.HuutoItem.huuto_closing_time < now))
+    )).scalar() or 0
 
     config = await get_item_config(db)
 
@@ -67,6 +78,8 @@ async def home(request: Request,
             "mf_filter": str(media_format_id) if media_format_id is not None else "",
             "genre_filter": str(genre_id) if genre_id is not None else "",
             "cond_filter": str(condition_id) if condition_id is not None else "",
+            "status_filter": status or "",
+            "publish_all_count": publish_all_count,
             "favicon_file": settings.favicon_file,
         }
     )

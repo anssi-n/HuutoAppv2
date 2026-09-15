@@ -3,7 +3,7 @@ from starlette.concurrency import run_in_threadpool
 from redis.asyncio import Redis
 
 from typing import Annotated, Any, Sequence
-from sqlalchemy import select, func, desc
+from sqlalchemy import select, func, desc, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from pydantic import ValidationError
@@ -42,7 +42,8 @@ async def fetch_items(db: AsyncSession,
                       order_by: str = "title",
                       media_format_id: int | None = None,
                       genre_id: int | None = None,
-                      condition_id: int | None = None) -> tuple[Sequence[items_model.HuutoItem], int, bool]:
+                      condition_id: int | None = None,
+                      status: str | None = None) -> tuple[Sequence[items_model.HuutoItem], int, bool]:
 
     select_stm = select(items_model.HuutoItem).options(selectinload(items_model.HuutoItem.shipping),
                                       selectinload(items_model.HuutoItem.country),
@@ -64,6 +65,18 @@ async def fetch_items(db: AsyncSession,
         count_stm = count_stm.where(items_model.HuutoItem.genre_id == genre_id)
     if condition_id is not None:
         count_stm = count_stm.where(items_model.HuutoItem.condition_id == condition_id)
+    now = datetime.now(UTC)
+    if status == "draft":
+        count_stm = count_stm.where(or_(
+            items_model.HuutoItem.huuto_id.is_(None),
+            items_model.HuutoItem.huuto_closing_time.is_(None)))
+    elif status == "closed":
+        count_stm = count_stm.where(items_model.HuutoItem.huuto_closing_time < now)
+    elif status == "open":
+        count_stm = count_stm.where(and_(
+            items_model.HuutoItem.huuto_id.is_not(None),
+            items_model.HuutoItem.huuto_closing_time.is_not(None),
+            items_model.HuutoItem.huuto_closing_time >= now))
     count_result = await db.execute(count_stm)
     total = count_result.scalar() or 0
     logger.info(f"Total number of items {total}.")
@@ -76,6 +89,17 @@ async def fetch_items(db: AsyncSession,
         select_stm = select_stm.where(items_model.HuutoItem.genre_id == genre_id)
     if condition_id is not None:
         select_stm = select_stm.where(items_model.HuutoItem.condition_id == condition_id)
+    if status == "draft":
+        select_stm = select_stm.where(or_(
+            items_model.HuutoItem.huuto_id.is_(None),
+            items_model.HuutoItem.huuto_closing_time.is_(None)))
+    elif status == "closed":
+        select_stm = select_stm.where(items_model.HuutoItem.huuto_closing_time < now)
+    elif status == "open":
+        select_stm = select_stm.where(and_(
+            items_model.HuutoItem.huuto_id.is_not(None),
+            items_model.HuutoItem.huuto_closing_time.is_not(None),
+            items_model.HuutoItem.huuto_closing_time >= now))
 
     for order_by_rule in order_by.split(","):
         descending = order_by_rule.startswith("-")
@@ -101,10 +125,11 @@ async def get_items(db: Annotated[AsyncSession, Depends(get_db)],
                     order_by: Annotated[str , Query(pattern=items_model.order_by_pattern)] = "title",
                     media_format_id: Annotated[int | None, Query()] = None,
                     genre_id: Annotated[int | None, Query()] = None,
-                    condition_id: Annotated[int | None, Query()] = None):
+                    condition_id: Annotated[int | None, Query()] = None,
+                    status: Annotated[str | None, Query(pattern="^(open|closed|draft)?$")] = None):
 
     items, total, has_more = await fetch_items(db, skip, limit, search, order_by,
-                                               media_format_id, genre_id, condition_id)
+                                               media_format_id, genre_id, condition_id, status)
 
     return items_schema.PaginatedItemResponse(
         items=[items_schema.ItemResponse.model_validate(item) for item in items],
@@ -303,6 +328,34 @@ async def upload_csvimages(
             ))
 
     return response
+
+
+@router.post("/publish/all", response_model=items_schema.PublishResponse, status_code=status.HTTP_201_CREATED)
+async def publish_all_items(db: Annotated[AsyncSession, Depends(get_db)],
+                            redis: Annotated[Redis, Depends(get_redis)]):
+
+    now = datetime.now(UTC)
+    result = await db.execute(select(items_model.HuutoItem).where(or_(
+        items_model.HuutoItem.huuto_id.is_(None),
+        items_model.HuutoItem.huuto_closing_time.is_(None),
+        items_model.HuutoItem.huuto_closing_time < now)))
+    items = result.scalars().all()
+
+    task_id = 0
+    for item in items:
+        task_id = await create_queue_msg(
+            item.id,
+            common_types.TaskType.AddItem,
+            0,
+            {"item_id": item.id},
+            db,
+            redis
+        )
+
+    return items_schema.PublishResponse(
+        task_id=task_id,
+        title=f"{len(items)} item(s) queued for publishing."
+    )
 
 
 @router.post("/publish/{item_id}", response_model=items_schema.PublishResponse, status_code=status.HTTP_201_CREATED)
