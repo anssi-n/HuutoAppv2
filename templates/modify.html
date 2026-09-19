@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f3f5f9">
+    <link rel="icon" href="/media/icons/{{ favicon_file }}" sizes="32x32">
+    <link rel="icon" type="image/png" sizes="16x16" href="/media/icons/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/media/icons/favicon-32x32.png">
+    <link rel="apple-touch-icon" href="/media/icons/apple-touch-icon.png">
+    <title>Modify Item – HuutoApp</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --bg-page: #f3f5f9;
+            --bg: #ffffff;
+            --border: #e4e8f0;
+            --border-strong: #cbd3e1;
+            --muted: #667085;
+            --text: #1f2430;
+            --accent: #4f46e5;
+            --accent-hover: #4338ca;
+            --accent-strong: #3730a3;
+            --accent-soft: #eef2ff;
+            --accent-ring: rgb(79 70 229 / 0.16);
+            --danger: #dc2626;
+            --danger-hover: #b91c1c;
+            --surface: #f6f8fb;
+            --surface-hover: #f0f2f6;
+            --surface-active: #e5e9f0;
+            --row-hover: #f8f9ff;
+            --thumb-bg: #eef1f6;
+            --shadow-sm: 0 1px 2px rgb(16 24 40 / 0.05);
+            --shadow-md: 0 2px 6px -1px rgb(16 24 40 / 0.08), 0 16px 36px -12px rgb(16 24 40 / 0.14);
+            --radius: 12px;
+        }
+        [data-theme="dark"] {
+            color-scheme: dark;
+            --bg-page: #151922;
+            --bg: #1b202b;
+            --border: #2a3040;
+            --border-strong: #39415a;
+            --muted: #98a2b8;
+            --text: #e7eaf2;
+            --accent: #7c82f5;
+            --accent-hover: #9499f8;
+            --accent-strong: #b0b4fb;
+            --accent-soft: #262b4d;
+            --accent-ring: rgb(124 130 245 / 0.28);
+            --danger: #f87171;
+            --danger-hover: #ef4444;
+            --surface: #202634;
+            --surface-hover: #262d3d;
+            --surface-active: #2b3345;
+            --row-hover: #222a39;
+            --thumb-bg: #232a3b;
+            --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.35);
+            --shadow-md: 0 2px 6px -1px rgb(0 0 0 / 0.45), 0 16px 36px -12px rgb(0 0 0 / 0.55);
+        }
+        [data-theme="dark"] body {
+            background-image:
+                radial-gradient(1100px 480px at 85% -10%, rgb(124 130 245 / 0.16), transparent 60%),
+                radial-gradient(900px 420px at -10% 110%, rgb(96 165 250 / 0.1), transparent 60%);
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 2rem 1.25rem;
+            background: var(--bg-page);
+            background-image:
+                radial-gradient(1100px 480px at 85% -10%, rgb(79 70 229 / 0.1), transparent 60%),
+                radial-gradient(900px 420px at -10% 110%, rgb(37 99 235 / 0.08), transparent 60%);
+            background-attachment: fixed;
+            color: var(--text);
+            overflow-x: hidden;
+            line-height: 1.5;
+        }
+        .skip-link {
+            position: absolute;
+            transform: translateY(-250%);
+            z-index: 50;
+            background: var(--accent);
+            color: #fff;
+            padding: 0.6rem 1rem;
+            border-radius: 0 0 8px 0;
+            text-decoration: none;
+            font-weight: 600;
+            box-shadow: var(--shadow-md);
+            transition: transform 0.15s ease;
+        }
+        .skip-link:focus-visible {
+            transform: translateY(0);
+            outline: 2px solid #fff;
+            outline-offset: -3px;
+        }
+        .visually-hidden {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            margin: -1px;
+            padding: 0;
+            overflow: hidden;
+            clip: rect(0 0 0 0);
+            white-space: nowrap;
+            border: 0;
+        }
+        main {
+            max-width: 52rem;
+            margin: 0 auto;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-md);
+            padding: 1.5rem 1.5rem 2rem;
+            scroll-margin-top: 2rem;
+        }
+        h1 {
+            margin: 0 0 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            font-size: 1.45rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            text-wrap: balance;
+            scroll-margin-top: 2rem;
+        }
+        h1::before {
+            content: "";
+            flex: none;
+            width: 0.7rem;
+            height: 1.4rem;
+            border-radius: 4px;
+            background: linear-gradient(180deg, var(--accent), #2563eb);
+            box-shadow: var(--shadow-sm);
+        }
+        .back-link {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 500;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .back-link:hover { text-decoration: underline; }
+        form[autocomplete="off"] { margin-top: 1.5rem; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.1rem;
+        }
+        .field { display: flex; flex-direction: column; gap: 0.35rem; }
+        .field.full { grid-column: 1 / -1; }
+        .field label { font-weight: 600; font-size: 0.9rem; }
+        .field label .opt { font-weight: 400; color: var(--muted); font-size: 0.8rem; }
+        .required::after { content: " *"; color: var(--danger); }
+        label.check {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 500;
+            font-size: 0.9rem;
+            min-height: 2.5rem;
+            padding: 0.4rem 0.7rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            background: var(--bg);
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        label.check:hover { background: var(--accent-soft); border-color: var(--border-strong); }
+        input[type="text"], input[type="number"], select, textarea {
+            padding: 0.5rem 0.7rem;
+            border: 1px solid var(--border-strong);
+            border-radius: 8px;
+            background: var(--bg);
+            color: var(--text);
+            font: inherit;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        input[type="text"]:focus-visible, input[type="number"]:focus-visible,
+        select:focus-visible, textarea:focus-visible, input[type="file"]:focus-visible {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-ring);
+        }
+        button:focus-visible, a:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+        .theme-toggle {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 40;
+            width: 2.6rem;
+            height: 2.6rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border-strong);
+            background: var(--bg);
+            color: var(--text);
+            border-radius: 999px;
+            cursor: pointer;
+            box-shadow: var(--shadow-md);
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .theme-toggle:hover { border-color: var(--accent); }
+        .theme-toggle svg {
+            width: 1.2rem;
+            height: 1.2rem;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .icon-moon { display: block; }
+        .icon-sun { display: none; }
+        [data-theme="dark"] .icon-moon { display: none; }
+        [data-theme="dark"] .icon-sun { display: block; }
+        .invalid { border-color: var(--danger) !important; }
+        .field-error:empty { display: none; }
+        .field-error { color: var(--danger); font-size: 0.8rem; }
+        .images {
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+        }
+        .images input[type="file"] {
+            border: 1px dashed var(--border-strong);
+            padding: 1.25rem;
+            border-radius: 10px;
+            background: var(--bg-page);
+            font: inherit;
+            color: var(--muted);
+        }
+        .images input[type="file"]:hover { border-color: var(--accent); background: var(--accent-soft); }
+        .hint { color: var(--muted); font-size: 0.8rem; margin: 0; }
+        #existing-images, #image-previews {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin: 0;
+            padding: 0;
+        }
+        #existing-images li, #image-previews li {
+            position: relative;
+        }
+        #existing-images img, #image-previews img {
+            width: 64px;
+            height: 64px;
+            object-fit: cover;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--thumb-bg);
+            box-shadow: var(--shadow-sm);
+            display: block;
+        }
+        #existing-images .img-tag, #image-previews .main-tag {
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: rgb(0 0 0 / 0.55);
+            color: #fff;
+            font-size: 0.65rem;
+            text-align: center;
+            border-radius: 0 0 8px 8px;
+        }
+        #existing-images .img-tag { bottom: auto; top: 0; border-radius: 8px 0 8px 0; }
+        #existing-images .remove-image {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            width: 1.4rem;
+            height: 1.4rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            border: 1px solid var(--danger);
+            background: var(--bg);
+            color: var(--danger);
+            border-radius: 999px;
+            font-weight: 700;
+            font-size: 1rem;
+            line-height: 1;
+            cursor: pointer;
+            box-shadow: var(--shadow-sm);
+        }
+        #existing-images .remove-image:hover {
+            background: var(--danger);
+            color: #fff;
+        }
+        #existing-images li.removing img {
+            opacity: 0.35;
+            filter: saturate(0.2);
+        }
+        #existing-images li.removing .img-tag { background: rgb(220 38 38 / 0.85); }
+        #existing-images li.removing .remove-image { border-color: var(--muted); color: var(--muted); }
+        #modify-status:empty { display: none; }
+        #modify-status { color: var(--muted); margin: 0.75rem 0; }
+        .actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        button {
+            padding: 0.55rem 1.3rem;
+            border: 1px solid var(--accent);
+            background: linear-gradient(180deg, var(--accent), var(--accent-hover));
+            color: #fff;
+            border-radius: 8px;
+            cursor: pointer;
+            font: inherit;
+            font-weight: 600;
+            box-shadow: var(--shadow-sm);
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        button:hover:not(:disabled) { border-color: var(--accent-strong); background: linear-gradient(180deg, var(--accent-hover), var(--accent-strong)); }
+        button:active:not(:disabled) { transform: translateY(1px); box-shadow: none; }
+        button:disabled { opacity: 0.6; cursor: progress; }
+        button, .back-link, a, label.check {
+            -webkit-tap-highlight-color: transparent;
+        }
+        #modify-status.error { color: var(--danger); }
+        @media (prefers-reduced-motion: no-preference) {
+            button, .skip-link, label.check, input[type="text"], input[type="number"], select, textarea {
+                transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+            }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            button, .skip-link, label.check, input[type="text"], input[type="number"], select, textarea { transition: none; }
+            button:active:not(:disabled) { transform: none; }
+        }
+        @media (max-width: 40rem) {
+            .grid { grid-template-columns: 1fr; }
+        }
+    </style>
+    <script>
+        (() => {
+            const saved = localStorage.getItem("huutoapp-theme");
+            const dark = saved === "dark" || (saved === null && window.matchMedia("(prefers-color-scheme: dark)").matches);
+            document.documentElement.dataset.theme = dark ? "dark" : "light";
+        })();
+    </script>
+</head>
+<body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <button type="button" id="theme-toggle" class="theme-toggle" aria-label="Toggle light or dark theme" title="Toggle light or dark theme">
+        <svg class="icon-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg class="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
+
+    <main id="main">
+        <h1><span translate="no">HuutoApp</span> · Modify Item</h1>
+        <a class="back-link" href="/">&larr; Back to items</a>
+
+        <form id="modify-item-form" autocomplete="off" novalidate>
+            <div class="grid">
+                <div class="field full">
+                    <label class="required" for="title">Title</label>
+                    <input type="text" id="title" name="title" maxlength="60" autocomplete="off"
+                           value="{{ item.title }}" aria-describedby="title-error">
+                    <span class="field-error" id="title-error"></span>
+                </div>
+
+                <div class="field full">
+                    <label class="required" for="description">Description</label>
+                    <textarea id="description" name="description" rows="5" aria-describedby="description-error">{{ item.description }}</textarea>
+                    <span class="field-error" id="description-error"></span>
+                </div>
+
+                <div class="field">
+                    <label class="required" for="quantity">Quantity</label>
+                    <input type="number" id="quantity" name="quantity" value="{{ item.quantity }}" min="1" max="5" step="1"
+                           inputmode="numeric" aria-describedby="quantity-error">
+                    <span class="field-error" id="quantity-error"></span>
+                </div>
+                <div class="field">
+                    <label class="required" for="price">Price (&euro;)</label>
+                    <input type="number" id="price" name="price" value="{{ "%.2f"|format(item.price) }}" min="0.01" step="0.01"
+                           inputmode="decimal" aria-describedby="price-error">
+                    <span class="field-error" id="price-error"></span>
+                </div>
+
+                {% macro select_field(name, label, options, current, required=True) -%}
+                <div class="field">
+                    <label class="{{ "required" if required else "" }}" for="{{ name }}">{{ label }}{% if not required %}<span class="opt"> optional</span>{% endif %}</label>
+                    <select id="{{ name }}" name="{{ name }}" {% if required %}required{% endif %} aria-describedby="{{ name }}-error">
+                        <option value="" {% if current is none %}selected{% endif %} disabled>Select…</option>
+                        {% for opt in options %}<option value="{{ opt.id }}"{% if current == opt.id %} selected{% endif %}>{{ opt.label }}</option>{% endfor %}
+                    </select>
+                    <span class="field-error" id="{{ name }}-error"></span>
+                </div>
+                {%- endmacro %}
+
+                {{ select_field("media_format_id", "Media format", config.media_format, item.media_format_id) }}
+
+                <div class="field">
+                    <label class="required" for="genre_id">Genre</label>
+                    <select id="genre_id" name="genre_id" required aria-describedby="genre_id-error">
+                        <option value="" {% if item.genre_id is none %}selected{% endif %} disabled>Select…</option>
+                        {% for opt in config.genre %}
+                            <option value="{{ opt.id }}" data-format="{{ opt.media_format_id }}"{% if item.genre_id == opt.id %} selected{% endif %}>{{ opt.label }}</option>
+                        {% endfor %}
+                    </select>
+                    <span class="field-error" id="genre_id-error"></span>
+                </div>
+
+                {{ select_field("condition_id", "Condition", config.condition, item.condition_id) }}
+                {{ select_field("region_id", "Region", config.region, item.region_id) }}
+                {{ select_field("shipping_id", "Shipping", config.shipping, item.shipping_id) }}
+                {{ select_field("country_id", "Country", config.country, item.country_id) }}
+                {{ select_field("subtitle_id", "Subtitles", config.subtitles, item.subtitle_id) }}
+                {{ select_field("packaging_id", "Packaging", config.packaging, item.packaging_id) }}
+                {{ select_field("discount_info_id", "Discount info", config.discount_info, item.discount_info_id, required=False) }}
+
+                <div class="field">
+                    <label class="check" for="offers_allowed">
+                        <input type="checkbox" id="offers_allowed" name="offers_allowed"{% if item.offers_allowed %} checked{% endif %}>
+                        Offers allowed
+                    </label>
+                </div>
+                <div class="field">
+                    <label class="check" for="slipcover">
+                        <input type="checkbox" id="slipcover" name="slipcover"{% if item.slipcover %} checked{% endif %}>
+                        Slipcover included
+                    </label>
+                </div>
+
+                <div class="field full">
+                    <label for="images">Images</label>
+                    <div class="images">
+                        {% if item.images %}
+                        <ul id="existing-images" aria-label="Existing images">
+                            {% for img in item.images %}
+                            <li data-image-id="{{ img.id }}">
+                                <img src="/media/images/{{ img.filename }}" alt="" width="64" height="64" loading="lazy">
+                                {% if img.file_type == "preview" %}<span class="img-tag">preview</span>{% endif %}
+                                <button type="button" class="remove-image" data-image-id="{{ img.id }}"
+                                        aria-label="Remove image {{ loop.index }}">×</button>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% endif %}
+                        <input type="file" id="images" name="images" accept="image/*" multiple
+                               aria-describedby="images-error">
+                        <p class="hint">Select up to 5 new images. The first new image becomes the main preview{% if preview_id %} only if you remove the current one{% endif %}.</p>
+                        <span class="field-error" id="images-error"></span>
+                        <ul id="image-previews" aria-label="New images"></ul>
+                    </div>
+                </div>
+            </div>
+
+            <p id="modify-status" role="status" aria-live="polite"></p>
+
+            <div class="actions">
+                <button type="submit" id="submit-btn">Save Changes</button>
+                <a class="back-link" href="/">Cancel</a>
+            </div>
+        </form>
+    </main>
+
+    <script>
+        (() => {
+            const itemId = Number("{{ item.id }}");
+            const form = document.getElementById("modify-item-form");
+            const submitBtn = document.getElementById("submit-btn");
+            const statusEl = document.getElementById("modify-status");
+            const fileInput = document.getElementById("images");
+            const formatSel = document.getElementById("media_format_id");
+            const genreSel = document.getElementById("genre_id");
+            const previewsEl = document.getElementById("image-previews");
+            const existingEls = document.getElementById("existing-images");
+            let previewId = Number("{{ preview_id }}") || 0;
+
+            const revoke = (url) => { if (url) URL.revokeObjectURL(url); };
+            const fieldError = (id) => document.getElementById(id + "-error");
+            const setFieldError = (name, message) => {
+                const el = form.elements[name];
+                const err = fieldError(name);
+                err.textContent = message;
+                if (message) {
+                    el.setAttribute("aria-invalid", "true");
+                    el.classList.add("invalid");
+                } else {
+                    el.removeAttribute("aria-invalid");
+                    el.classList.remove("invalid");
+                }
+            };
+
+            function applyFilter(fromChange) {
+                const fmt = formatSel.value;
+                const sel = genreSel.options[genreSel.selectedIndex];
+                for (const opt of genreSel.options) {
+                    if (opt.value === "") continue;
+                    opt.hidden = !(opt.dataset.format === fmt || opt === sel);
+                }
+                if (fromChange && sel && sel.hidden) genreSel.value = "";
+            }
+            formatSel.addEventListener("change", () => { genreSel.value = ""; applyFilter(true); });
+            applyFilter(false);
+
+            const pendingRemovals = new Set();
+            if (existingEls) {
+                for (const li of existingEls.querySelectorAll("li")) {
+                    const btn = li.querySelector(".remove-image");
+                    btn.addEventListener("click", () => {
+                        const imageId = Number(li.dataset.imageId);
+                        if (pendingRemovals.has(imageId)) {
+                            pendingRemovals.delete(imageId);
+                            li.classList.remove("removing");
+                            btn.disabled = false;
+                            btn.setAttribute("aria-label", "Remove image");
+                        } else {
+                            pendingRemovals.add(imageId);
+                            li.classList.add("removing");
+                            btn.disabled = true;
+                            if (imageId === previewId) previewId = 0;
+                        }
+                        setFieldError("images", "");
+                    });
+                }
+            }
+
+            fileInput.addEventListener("change", () => {
+                const files = Array.from(fileInput.files);
+                for (const urlState of previewsEl.querySelectorAll("img")) {
+                    revoke(urlState.dataset.url);
+                }
+                previewsEl.replaceChildren();
+                files.slice(0, 5).forEach((file, index) => {
+                    const li = document.createElement("li");
+                    const img = document.createElement("img");
+                    const url = URL.createObjectURL(file);
+                    img.dataset.url = url;
+                    img.src = url;
+                    img.width = 64;
+                    img.height = 64;
+                    img.alt = `New image ${index + 1}`;
+                    li.appendChild(img);
+                    if (index === 0) {
+                        const tag = document.createElement("span");
+                        tag.className = "main-tag";
+                        tag.textContent = "new preview";
+                        li.appendChild(tag);
+                    }
+                    previewsEl.appendChild(li);
+                });
+                setFieldError("images", "");
+            });
+
+            function errorMessage(data, status) {
+                if (!data) return `server returned HTTP ${status}`;
+                if (typeof data.detail === "string") return data.detail;
+                if (Array.isArray(data.detail)) return data.detail.map((d) => d.msg).join(", ");
+                return JSON.stringify(data);
+            }
+
+            form.addEventListener("submit", async (e) => {
+                e.preventDefault();
+                if (submitBtn.disabled) return;
+
+                let firstInvalid = null;
+                const check = (name, ok, message) => {
+                    setFieldError(name, "");
+                    if (!ok) {
+                        setFieldError(name, message);
+                        if (!firstInvalid) firstInvalid = fieldError(name);
+                        return false;
+                    }
+                    return true;
+                };
+                const val = (name) => String(form.elements[name].value).trim();
+
+                const title = val("title");
+                const description = val("description");
+                const quantity = Number(form.elements.quantity.value);
+                const price = Number(form.elements.price.value);
+                const files = Array.from(fileInput.files);
+
+                check("title", title.length >= 1 && title.length <= 60, "Enter a title (1-60 characters).");
+                check("description", description.length >= 1, "Enter a description.");
+                check("quantity", Number.isInteger(quantity) && quantity >= 1 && quantity <= 5, "Enter a whole quantity between 1 and 5.");
+                check("price", Number.isFinite(price) && price > 0, "Enter a price greater than 0.");
+                check("images", files.length <= 5, "Select at most 5 images.");
+
+                for (const name of ["media_format_id", "genre_id", "condition_id", "region_id",
+                                    "shipping_id", "country_id", "subtitle_id", "packaging_id"]) {
+                    const labels = {
+                        media_format_id: "Media format", genre_id: "Genre", condition_id: "Condition",
+                        region_id: "Region", shipping_id: "Shipping", country_id: "Country",
+                        subtitle_id: "Subtitles", packaging_id: "Packaging",
+                    };
+                    check(name, val(name) !== "", `Select a ${labels[name].toLowerCase()}.`);
+                }
+
+                if (firstInvalid) {
+                    firstInvalid.scrollIntoView({ block: "center", behavior: "smooth" });
+                    firstInvalid.focus();
+                    return;
+                }
+
+                const payload = {
+                    title,
+                    description,
+                    quantity,
+                    price,
+                    offers_allowed: form.elements.offers_allowed.checked,
+                    slipcover: form.elements.slipcover.checked,
+                    shipping_id: Number(val("shipping_id")),
+                    country_id: Number(val("country_id")),
+                    subtitle_id: Number(val("subtitle_id")),
+                    region_id: Number(val("region_id")),
+                    condition_id: Number(val("condition_id")),
+                    packaging_id: Number(val("packaging_id")),
+                    media_format_id: Number(val("media_format_id")),
+                    genre_id: Number(val("genre_id")),
+                };
+                const discount = val("discount_info_id");
+                if (discount !== "") payload.discount_info_id = Number(discount);
+
+                submitBtn.disabled = true;
+                submitBtn.textContent = "Saving…";
+                statusEl.className = "";
+                statusEl.textContent = "Saving changes…";
+
+                try {
+                    const res = await fetch(`/api/v1/items/${itemId}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload),
+                    });
+                    if (!res.ok) {
+                        throw new Error(errorMessage(await res.json().catch(() => null), res.status));
+                    }
+
+                    for (const imageId of pendingRemovals) {
+                        statusEl.textContent = `Removing image…`;
+                        const delRes = await fetch(`/api/v1/items/${itemId}/image/${imageId}`, { method: "DELETE" });
+                        if (!delRes.ok) {
+                            throw new Error(errorMessage(await delRes.json().catch(() => null), delRes.status));
+                        }
+                    }
+
+                    for (let i = 0; i < files.length; i++) {
+                        statusEl.textContent = `Uploading image ${i + 1} of ${files.length}…`;
+                        const fd = new FormData();
+                        fd.append("image", files[i]);
+                        fd.append("image_type", i === 0 && previewId === 0 ? "preview" : "fullsize");
+                        fd.append("phase", "update");
+                        const imgRes = await fetch(`/api/v1/items/${itemId}/image`, { method: "PATCH", body: fd });
+                        if (!imgRes.ok) {
+                            throw new Error(errorMessage(await imgRes.json().catch(() => null), imgRes.status));
+                        }
+                    }
+
+                    statusEl.textContent = "Changes saved.";
+                    window.location.href = "/";
+                } catch (err) {
+                    statusEl.className = "error";
+                    statusEl.textContent = `Failed to save changes: ${err.message}. Please try again.`;
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = "Save Changes";
+                }
+            });
+        })();
+    </script>
+    <script>
+        (() => {
+            const btn = document.getElementById("theme-toggle");
+            if (!btn) return;
+            const meta = document.querySelector('meta[name="theme-color"]');
+            const set = (dark) => {
+                document.documentElement.dataset.theme = dark ? "dark" : "light";
+                btn.setAttribute("aria-pressed", dark ? "true" : "false");
+                if (meta) meta.setAttribute("content", dark ? "#151922" : "#f3f5f9");
+            };
+            btn.addEventListener("click", () => {
+                const dark = document.documentElement.dataset.theme !== "dark";
+                localStorage.setItem("huutoapp-theme", dark ? "dark" : "light");
+                set(dark);
+            });
+            set(document.documentElement.dataset.theme === "dark");
+        })();
+    </script>
+</body>
+</html>

@@ -348,10 +348,13 @@
             background: transparent;
             border-radius: 8px;
             cursor: pointer;
+            text-decoration: none;
             touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
         }
         .btn-icon img { display: block; border-radius: 4px; }
+        [data-theme="dark"] .details-btn img { filter: invert(1); }
+        [data-theme="dark"] .modify-btn img { filter: invert(1); }
         .btn-icon:hover { background: var(--surface-hover); border-color: var(--border); }
         .btn-icon:active { background: var(--surface-active); }
         .btn-delete img { display: block; border-radius: 4px; }
@@ -648,6 +651,7 @@
                 {% if mf_filter %}<input type="hidden" name="media_format_id" value="{{ mf_filter }}">{% endif %}
                 {% if genre_filter %}<input type="hidden" name="genre_id" value="{{ genre_filter }}">{% endif %}
                 {% if cond_filter %}<input type="hidden" name="condition_id" value="{{ cond_filter }}">{% endif %}
+                {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
                 <label class="visually-hidden" for="search-input">Search items</label>
                 <input type="search" id="search-input" name="search" value="{{ search }}"
                        placeholder="Search items (e.g. Blade Runner)…" autocomplete="off">
@@ -786,14 +790,19 @@
                         {% endif %}
                     </td>
                     <td class="actions">
-                        <button type="button" class="btn-icon"
+                        <button type="button" class="btn-icon details-btn"
                                 data-details-id="{{ item.id }}" data-details-title="{{ item.title }}"
                                 aria-label="View details of {{ item.title }}">
                             <img src="/media/icons/details-icon.png" alt="" width="16" height="16">
                         </button>
+                        <a class="btn-icon modify-btn" href="/modify/{{ item.id }}"
+                           aria-label="Modify {{ item.title }}" title="Modify {{ item.title }}">
+                            <img src="/media/icons/modify.png" alt="" width="16" height="16">
+                        </a>
                         {% if item.huuto_id is none or item.closed %}
                             <button type="button" class="btn-publish"
                                     data-publish-id="{{ item.id }}" data-publish-title="{{ item.title }}"
+                                    {% if item.huuto_id is not none %}data-publish-route="relist"{% endif %}
                                     aria-label="Publish {{ item.title }}" title="Publish {{ item.title }}">
                                 <img src="/media/icons/publish.png" alt="" width="16" height="16">
                             </button>
@@ -907,6 +916,18 @@
                 }
             } catch (err) {
                 console.error("Unable to format prices", err);
+            }
+
+            const searchInput = document.getElementById("search-input");
+            if (searchInput) {
+                let hadValue = searchInput.value !== "";
+                searchInput.addEventListener("search", () => {
+                    const value = searchInput.value;
+                    if (hadValue && value === "") {
+                        searchInput.form.submit();
+                    }
+                    hadValue = value !== "";
+                });
             }
 
             const fmtSel = document.getElementById("filter-format");
@@ -1070,10 +1091,12 @@
             const publishStatusEl = document.getElementById("publish-status");
             const publishKeywordsEl = document.getElementById("publish-add-keywords");
             let pendingPublishId = null;
+            let pendingPublishRoute = "publish";
 
             for (const btn of document.querySelectorAll("[data-publish-id]")) {
                 btn.addEventListener("click", () => {
                     pendingPublishId = btn.dataset.publishId;
+                    pendingPublishRoute = btn.dataset.publishRoute || "publish";
                     publishTitleEl.textContent = btn.dataset.publishTitle;
                     publishKeywordsEl.checked = false;
                     publishDialog.showModal();
@@ -1083,6 +1106,7 @@
             publishDialog.addEventListener("close", async () => {
                 if (publishDialog.returnValue !== "publish") return;
                 const id = pendingPublishId;
+                const route = pendingPublishRoute;
                 pendingPublishId = null;
                 if (!id) return;
 
@@ -1090,7 +1114,7 @@
                 publishStatusEl.textContent = "Publishing…";
                 const addKeywords = publishKeywordsEl.checked ? 1 : 0;
                 try {
-                    const response = await fetch(`/api/v1/items/publish/${id}?add_keywords=${addKeywords}`, { method: "POST" });
+                    const response = await fetch(`/api/v1/items/${route}/${id}?add_keywords=${addKeywords}`, { method: "POST" });
                     if (!response.ok) {
                         throw new Error(`Server returned ${response.status}`);
                     }

@@ -2,11 +2,12 @@ import math
 from datetime import UTC, datetime
 
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.templating import Jinja2Templates
 from typing import Annotated
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
+from sqlalchemy.orm import selectinload
 from db import get_db
 from models import items_model
 from item_config import get_item_config
@@ -95,6 +96,36 @@ async def new_item(request: Request,
         request=request,
         name="new_item.html",
         context={"config": config, "favicon_file": settings.favicon_file}
+    )
+
+
+@router.get("/modify/{item_id}", include_in_schema=False)
+async def modify_item(request: Request,
+                      item_id: int,
+                      db: Annotated[AsyncSession, Depends(get_db)]):
+
+    result = await db.execute(
+        select(items_model.HuutoItem)
+        .options(selectinload(items_model.HuutoItem.images))
+        .where(items_model.HuutoItem.id == item_id)
+    )
+    item = result.scalars().first()
+    if item is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
+
+    config = await get_item_config(db)
+
+    preview_id = next((img.id for img in item.images if img.file_type == "preview"), 0)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="modify.html",
+        context={
+            "config": config,
+            "item": item,
+            "preview_id": preview_id,
+            "favicon_file": settings.favicon_file,
+        }
     )
 
 

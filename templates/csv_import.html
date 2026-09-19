@@ -292,14 +292,6 @@
             font-size: 0.8rem;
             box-shadow: var(--shadow-sm);
         }
-        #selected-files li img {
-            width: 40px;
-            height: 40px;
-            object-fit: cover;
-            border-radius: 6px;
-            background: var(--thumb-bg);
-            display: block;
-        }
         #selected-files li .name {
             max-width: 22rem;
             overflow: hidden;
@@ -447,26 +439,30 @@
             margin: 0.5rem 0 0;
             padding: 0;
         }
-        .row-previews li { position: relative; }
-        .row-previews img {
-            width: 56px;
-            height: 56px;
-            object-fit: cover;
-            border-radius: 6px;
+        .row-previews li {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            max-width: 100%;
+            padding: 0.22rem 0.5rem;
             border: 1px solid var(--border);
-            background: var(--thumb-bg);
-            display: block;
+            border-radius: 6px;
+            background: var(--bg);
+            font-size: 0.75rem;
+        }
+        .row-previews li .name {
+            max-width: 18rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         .row-previews .tag {
-            position: absolute;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgb(0 0 0 / 0.55);
-            color: #fff;
+            background: var(--accent-soft);
+            color: var(--accent);
             font-size: 0.6rem;
-            text-align: center;
-            border-radius: 0 0 6px 6px;
+            border-radius: 4px;
+            padding: 0.1rem 0.35rem;
+            white-space: nowrap;
         }
 
         #build-status:empty { display: none; }
@@ -634,7 +630,7 @@
                 <div class="field">
                     <label class="required" for="csv-file">CSV file</label>
                     <label class="dropzone" id="csv-dropzone" for="csv-file">
-                        <strong>Choose CSV file</strong><br>
+                        <strong id="csv-filename-label">Choose CSV file</strong><br>
                         or drop it here &nbsp;·&nbsp; .csv (pipe-delimited, see format above)
                         <input type="file" id="csv-file" name="csv" accept=".csv,text/csv" aria-describedby="csv-error">
                     </label>
@@ -727,6 +723,7 @@
             const progressFill = document.getElementById("progress-fill");
             const progressText = document.getElementById("progress-text");
             const csvInput = document.getElementById("csv-file");
+            const csvFilenameLabel = document.getElementById("csv-filename-label");
             const imagesInput = document.getElementById("import-images");
             const csvDropzone = document.getElementById("csv-dropzone");
             const imagesDropzone = document.getElementById("images-dropzone");
@@ -765,24 +762,16 @@
 
             let csvFile = null;
             let imageFiles = [];
-            let revokeUrls = [];
             let rows = [{ images: [] }];
 
-            const removeAllUrls = () => {
-                revokeUrls.forEach((u) => URL.revokeObjectURL(u));
-                revokeUrls = [];
+            const updateCsvLabel = () => {
+                csvFilenameLabel.textContent = csvFile ? csvFile.name : "Choose CSV file";
             };
 
             function renderFiles() {
                 selectedEl.replaceChildren();
-                removeAllUrls();
                 for (const file of imageFiles) {
                     const li = document.createElement("li");
-                    const img = document.createElement("img");
-                    const url = URL.createObjectURL(file);
-                    revokeUrls.push(url);
-                    img.src = url;
-                    img.alt = "";
                     const name = document.createElement("span");
                     name.className = "name";
                     name.textContent = file.name;
@@ -799,7 +788,7 @@
                         renderFiles();
                         setFieldError("images", "");
                     });
-                    li.append(img, name, size, remove);
+                    li.append(name, size, remove);
                     selectedEl.appendChild(li);
                 }
             }
@@ -823,6 +812,7 @@
             csvInput.addEventListener("change", () => {
                 csvFile = csvInput.files[0] || null;
                 setFieldError("csv", "");
+                updateCsvLabel();
             });
             imagesInput.addEventListener("change", () => {
                 imageFiles = Array.from(imagesInput.files);
@@ -851,6 +841,7 @@
                 if (csv) {
                     csvFile = csv;
                     setFieldError("csv", "");
+                    updateCsvLabel();
                 } else {
                     setFieldError("csv", "Drop a .csv file.");
                 }
@@ -961,17 +952,13 @@
 
             function renderRowPreviews(card, i) {
                 const ul = card.querySelector(".row-previews");
-                ul.querySelectorAll("img").forEach((img) => { if (img.dataset.url) URL.revokeObjectURL(img.dataset.url); });
                 ul.replaceChildren();
                 rows[i].images.forEach((file, idx) => {
                     const li = document.createElement("li");
-                    const img = document.createElement("img");
-                    const url = URL.createObjectURL(file);
-                    li.dataset.url = url;
-                    img.dataset.url = url;
-                    img.src = url;
-                    img.alt = "";
-                    li.appendChild(img);
+                    const name = document.createElement("span");
+                    name.className = "name";
+                    name.textContent = file.name;
+                    li.appendChild(name);
                     if (idx === 0) {
                         const tag = document.createElement("span");
                         tag.className = "tag";
@@ -1072,6 +1059,7 @@
                 imageFiles = [];
                 renderBuild();
                 renderFiles();
+                updateCsvLabel();
                 generatedPre.hidden = true;
                 buildStatusEl.textContent = "";
             });
@@ -1140,6 +1128,7 @@
                 csvFile = new File([content], "import_" + new Date().toISOString().replace(/[:.]/g, "-") + ".csv", { type: "text/csv" });
                 imageFiles = Array.from(allImages.values());
                 renderFiles();
+                updateCsvLabel();
                 generatedPre.textContent = content;
                 generatedPre.hidden = false;
                 buildStatusEl.textContent = "";
