@@ -7,7 +7,8 @@ from sqlalchemy import select, func, desc, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from pydantic import ValidationError
-from datetime import datetime, UTC
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from models import items_model, task_log_model
 from common import common_types
 from schemas import items_schema, huutoapp_queue_schema
@@ -18,6 +19,9 @@ from image_utils import delete_image, process_image, generate_preview, ImageType
 from config import settings
 from item_config import get_item_config
 from logger import logger
+
+HELSINKI = ZoneInfo("Europe/Helsinki")
+UTC = ZoneInfo("UTC")
 
 router = APIRouter()
 
@@ -483,6 +487,10 @@ async def delete_item(db: Annotated[AsyncSession, Depends(get_db)],
 
         for image in item.images:
             delete_image(image.filename)
+    else:
+        item.huuto_closing_time = datetime.now(HELSINKI).astimezone(UTC)
+        await db.commit()
+
 
     if item.huuto_id:
         task_id = await create_queue_msg(
