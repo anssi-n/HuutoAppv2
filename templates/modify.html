@@ -635,7 +635,7 @@
                 statusEl.textContent = "Saving changes…";
 
                 try {
-                    const res = await fetch(`/api/v1/items/${itemId}`, {
+                    const res = await apiFetch(`/api/v1/items/${itemId}`, {
                         method: "PATCH",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify(payload),
@@ -646,7 +646,7 @@
 
                     for (const imageId of pendingRemovals) {
                         statusEl.textContent = `Removing image…`;
-                        const delRes = await fetch(`/api/v1/items/${itemId}/image/${imageId}`, { method: "DELETE" });
+                        const delRes = await apiFetch(`/api/v1/items/${itemId}/image/${imageId}`, { method: "DELETE" });
                         if (!delRes.ok) {
                             throw new Error(errorMessage(await delRes.json().catch(() => null), delRes.status));
                         }
@@ -658,7 +658,7 @@
                         fd.append("image", files[i]);
                         fd.append("image_type", i === 0 && previewId === 0 ? "preview" : "fullsize");
                         fd.append("phase", "update");
-                        const imgRes = await fetch(`/api/v1/items/${itemId}/image`, { method: "PATCH", body: fd });
+                        const imgRes = await apiFetch(`/api/v1/items/${itemId}/image`, { method: "PATCH", body: fd });
                         if (!imgRes.ok) {
                             throw new Error(errorMessage(await imgRes.json().catch(() => null), imgRes.status));
                         }
@@ -693,5 +693,6 @@
             set(document.documentElement.dataset.theme === "dark");
         })();
     </script>
+    <script src="/static/auth.js" defer></script>
 </body>
 </html>

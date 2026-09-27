@@ -1215,7 +1215,7 @@
                             setProgress(i + 1, imageFiles.length);
                             const fd = new FormData();
                             fd.append("images", file, file.name);
-                            const res = await fetch("/api/v1/items/publish/csvimages", {
+                            const res = await apiFetch("/api/v1/items/publish/csvimages", {
                                 method: "PATCH",
                                 body: fd,
                             });
@@ -1239,7 +1239,7 @@
                     const csvBlob = new File([csvFile], csvFile.name, { type: "text/csv" });
                     fd.append("csv", csvBlob, csvBlob.name);
                     setStatus("Importing CSV…");
-                    const res = await fetch("/api/v1/items/publish/csv", {
+                    const res = await apiFetch("/api/v1/items/publish/csv", {
                         method: "POST",
                         body: fd,
                     });
@@ -1287,5 +1287,6 @@
             set(document.documentElement.dataset.theme === "dark");
         })();
     </script>
+    <script src="/static/auth.js" defer></script>
 </body>
 </html>

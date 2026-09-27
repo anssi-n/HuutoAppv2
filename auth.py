@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from pwdlib import PasswordHash
 from sqlalchemy import select
@@ -14,7 +14,8 @@ from config import settings
 from db import get_db
 
 password_hash = PasswordHash.recommended()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/users/token")
+AUTH_COOKIE_NAME = "huutoapp-token"
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/users/token", auto_error=False)
 
 
 def hash_password(password: str) -> str:
@@ -58,10 +59,32 @@ def verify_access_token(token: str) -> str | None:
         return payload.get("sub")
 
 
+async def get_access_token(
+    request: Request,
+    header_token: Annotated[str | None, Depends(oauth2_scheme)],
+) -> str | None:
+    """Resolve the JWT from the Authorization header, falling back to the cookie.
+
+    The header is what fetch() callers (auth.js apiFetch) send. The cookie is
+    what browser page navigations send, since a navigation cannot attach an
+    Authorization header. Login sets both.
+    """
+    if header_token:
+        return header_token
+    return request.cookies.get(AUTH_COOKIE_NAME)
+
+
 async def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)],
+    token: Annotated[str | None, Depends(get_access_token)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> user_model.User:
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     user_id = verify_access_token(token)
     if user_id is None:
         raise HTTPException(

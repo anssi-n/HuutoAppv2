@@ -1,13 +1,14 @@
 from datetime import timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from common import common_types
 
 from auth import (
+    AUTH_COOKIE_NAME,
     CurrentUser,
     create_access_token,
     hash_password,
@@ -53,6 +54,7 @@ async def create_user(user: users_schema.AppUser, db: Annotated[AsyncSession, De
 
 @router.post("/token", response_model=users_schema.Token)
 async def login_for_access_token(
+    response: Response,
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -81,7 +83,24 @@ async def login_for_access_token(
               "role": user.role},
         expires_delta=access_token_expires,
     )
+    # Also set a cookie: browser page navigations to the admin pages cannot send
+    # an Authorization header, and they resolve the token from here.
+    response.set_cookie(
+        key=AUTH_COOKIE_NAME,
+        value=access_token,
+        max_age=int(access_token_expires.total_seconds()),
+        httponly=True,
+        samesite="lax",
+        secure=settings.auth_cookie_secure,
+        path="/",
+    )
     return users_schema.Token(access_token=access_token, token_type="bearer")
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def logout(response: Response):
+    """Clear the auth cookie. The stored bearer token is dropped by the client."""
+    response.delete_cookie(key=AUTH_COOKIE_NAME, path="/")
 
 
 @router.get("/me", response_model=users_schema.AppUserResponse)
@@ -178,6 +197,7 @@ async def change_password(
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user(
     user_id: int,
+    response: Response,
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -197,3 +217,4 @@ async def delete_user(
 
     await db.delete(user)
     await db.commit()
+    response.delete_cookie(key=AUTH_COOKIE_NAME, path="/")

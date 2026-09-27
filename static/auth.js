@@ -1,6 +1,7 @@
 /* Account UI: token storage, session resolution, and the account dialogs.
-   The backend only reads the Authorization header (OAuth2PasswordBearer,
-   auth.py), so every call goes through apiFetch() which attaches the token.
+   Login also sets an HttpOnly cookie, so plain page navigations to the admin
+   pages authenticate; every fetch() call goes through apiFetch(), which
+   attaches the token as an Authorization header.
    On 401 the stored token is dropped and the UI falls back to logged out. */
 
 const TOKEN_KEY = "huutoapp-token";
@@ -14,6 +15,18 @@ function setToken(token) {
 
 function clearToken() {
     localStorage.removeItem(TOKEN_KEY);
+}
+
+/* The auth cookie is HttpOnly, so only the server can clear it. Sign-out and
+   account deletion both have to round-trip; the stored token is dropped either
+   way so the UI falls back to logged out even if the call fails. */
+async function signOut() {
+    clearToken();
+    try {
+        await fetch(`${USERS_URL}/logout`, { method: "POST" });
+    } catch (err) {
+        /* offline or server down: the local token is already gone */
+    }
 }
 
 function errorMessage(data, status) {
@@ -372,7 +385,7 @@ const disableForm = (form, button, busy, busyText) => {
                 setStatus(deleteAccountStatus, "", false);
                 openDialog(deleteAccountDialog);
             } else if (action === "logout") {
-                clearToken();
+                signOut();
                 onLoggedOut("You have been signed out.");
             }
         });
