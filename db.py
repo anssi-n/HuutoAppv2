@@ -10,6 +10,7 @@ import aiofiles
 
 class Base(DeclarativeBase):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    
 CREDS_DIR = Path(settings.database_credential_dir)
 
 async def get_db_credentials_async() -> tuple[str, str]:

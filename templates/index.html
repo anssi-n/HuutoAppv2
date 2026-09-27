@@ -552,6 +552,95 @@
         }
         .btn-danger:hover { border-color: var(--danger-hover); background: linear-gradient(180deg, var(--danger-hover), #991b1b); }
         .btn-danger:active { transform: translateY(1px); }
+        /* The [hidden] attribute must win over component display rules such as
+           .icon-btn and .account-menu, otherwise hidden elements stay visible. */
+        [hidden] { display: none !important; }
+        /* Add item, import CSV, statistics and the per-item modify / delete /
+           publish controls are admin-only. They default to hidden so a non-admin
+           never sees a destructive control; auth.js reveals them only after
+           /api/v1/users/me confirms the role, by setting data-role on <html>. */
+        html:not([data-role="admin"]) [data-admin-only] { display: none !important; }
+        /* account menu */
+        .account-wrap { position: relative; display: inline-flex; }
+        .account-wrap > .icon-btn svg {
+            width: 1.25rem;
+            height: 1.25rem;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .account-menu {
+            position: absolute;
+            top: calc(100% + 0.5rem);
+            right: 0;
+            z-index: 40;
+            min-width: 14rem;
+            padding: 0.35rem;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: var(--bg);
+            box-shadow: var(--shadow-md);
+        }
+        .account-menu[hidden] { display: none; }
+        .account-menu-head {
+            padding: 0.45rem 0.6rem;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 0.3rem;
+        }
+        .account-menu-head strong { display: block; font-size: 0.9rem; }
+        .account-menu-head span { display: block; font-size: 0.78rem; color: var(--muted); overflow-wrap: anywhere; }
+        .account-menu button {
+            display: block;
+            width: 100%;
+            text-align: left;
+            padding: 0.45rem 0.6rem;
+            border: 0;
+            border-radius: 6px;
+            background: transparent;
+            color: var(--text);
+            font-weight: 500;
+            box-shadow: none;
+        }
+        .account-menu button:hover { background: var(--surface-hover); border-color: transparent; }
+        .account-menu button:focus-visible {
+            outline: none;
+            background: var(--accent-soft);
+            box-shadow: 0 0 0 2px var(--accent-ring);
+        }
+        .account-menu button.danger { color: var(--danger); }
+        .account-menu button.danger:hover { background: var(--danger-soft); }
+        .account-menu hr { border: 0; border-top: 1px solid var(--border); margin: 0.3rem 0; }
+        /* account dialogs */
+        .field { display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 0.85rem; }
+        .field > label { font-size: 0.85rem; font-weight: 600; }
+        .field input {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--border-strong);
+            border-radius: 8px;
+            background: var(--bg);
+            font: inherit;
+            color: var(--text);
+            width: 100%;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .field input:focus-visible {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-ring);
+        }
+        .field input:disabled { opacity: 0.6; }
+        .field input.invalid { border-color: var(--danger) !important; }
+        .field-error { color: var(--danger); font-size: 0.8rem; }
+        .field-error:empty { display: none; }
+        .hint { color: var(--muted); font-size: 0.8rem; margin: 0 0 0.85rem; }
+        #account-status { margin: 0 0 0.85rem; }
+        #account-status:empty { display: none; }
+        #account-status.error { color: var(--danger); }
+        .dialog-status { margin: 0 0 0.85rem; }
+        .dialog-status:empty { display: none; }
+        .dialog-status.error { color: var(--danger); }
         @media (prefers-reduced-motion: reduce) {
             dialog[open] { animation: none; }
         }
@@ -745,22 +834,50 @@
             <span class="muted">{{ total }} item{% if total != 1 %}s{% endif %}</span>
             <span class="toolbar-actions">
                 {% if publish_all_count %}
-                    <button type="button" id="publish-all-btn" class="btn-import icon-btn"
+                    <button type="button" id="publish-all-btn" class="btn-import icon-btn" data-admin-only
                             aria-label="Publish all drafts and closed items" title="Publish all drafts and closed items">
                         <img src="/media/icons/publish.png" alt="" width="20" height="20">
                     </button>
                 {% endif %}
-                <a class="btn-add icon-btn" href="/new" aria-label="Add item" title="Add item">
+                <a class="btn-add icon-btn" href="/new" data-admin-only aria-label="Add item" title="Add item">
                     <img src="/media/icons/add-item.png" alt="" width="24" height="24">
                 </a>
-                <a class="btn-import icon-btn" href="/import" aria-label="Import CSV" title="Import CSV">
+                <a class="btn-import icon-btn" href="/import" data-admin-only aria-label="Import CSV" title="Import CSV">
                     <img src="/media/icons/csvfile.png" alt="" width="20" height="20">
                 </a>
-                <a class="btn-import icon-btn" href="/stats" aria-label="Statistics" title="Statistics">
+                <a class="btn-import icon-btn" href="/stats" data-admin-only aria-label="Statistics" title="Statistics">
                     <img src="/media/icons/statistics.png" alt="" width="20" height="20">
                 </a>
+                <span class="account-wrap">
+                    <button type="button" id="account-btn" class="icon-btn" hidden
+                            aria-label="Account" title="Account"
+                            aria-haspopup="menu" aria-expanded="false" aria-controls="account-menu">
+                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                    </button>
+                    <span id="account-menu" class="account-menu" role="menu" hidden>
+                        <span class="account-menu-head">
+                            <strong id="account-name"></strong>
+                            <span>Signed in</span>
+                        </span>
+                        <span id="account-actions" hidden>
+                            <button type="button" role="menuitem" data-account-action="edit">Modify details</button>
+                            <button type="button" role="menuitem" class="danger" data-account-action="delete">Delete account</button>
+                            <hr>
+                            <button type="button" role="menuitem" data-account-action="logout">Sign out</button>
+                        </span>
+                        <span id="account-anon">
+                            <button type="button" role="menuitem" id="login-open">Sign in</button>
+                            <button type="button" role="menuitem" id="register-open">Create account</button>
+                        </span>
+                    </span>
+                </span>
             </span>
         </div>
+
+        <p id="account-status" role="status" aria-live="polite"></p>
 
         <p id="delete-status" role="status" aria-live="polite"></p>
         <p id="publish-all-status" role="status" aria-live="polite"></p>
@@ -834,19 +951,19 @@
                                 aria-label="View details of {{ item.title }}">
                             <img src="/media/icons/details-icon.png" alt="" width="16" height="16">
                         </button>
-                        <a class="btn-icon modify-btn" href="/modify/{{ item.id }}"
+                        <a class="btn-icon modify-btn" href="/modify/{{ item.id }}" data-admin-only
                            aria-label="Modify {{ item.title }}" title="Modify {{ item.title }}">
                             <img src="/media/icons/modify.png" alt="" width="16" height="16">
                         </a>
                         {% if item.huuto_id is none or item.closed %}
-                            <button type="button" class="btn-publish"
+                            <button type="button" class="btn-publish" data-admin-only
                                     data-publish-id="{{ item.id }}" data-publish-title="{{ item.title }}"
                                     {% if item.huuto_id is not none %}data-publish-route="relist"{% endif %}
                                     aria-label="Publish {{ item.title }}" title="Publish {{ item.title }}">
                                 <img src="/media/icons/publish.png" alt="" width="16" height="16">
                             </button>
                         {% endif %}
-                        <button type="button" class="btn-delete"
+                        <button type="button" class="btn-delete" data-admin-only
                                 data-delete-id="{{ item.id }}" data-delete-title="{{ item.title }}"
                                 aria-label="Delete {{ item.title }}">
                             <img src="/media/icons/trash_18437060.png" alt="" width="16" height="16">
@@ -947,6 +1064,92 @@
         </div>
     </dialog>
 
+    <dialog id="login-dialog" aria-labelledby="login-dialog-title">
+        <form method="dialog" id="login-form">
+            <h2 id="login-dialog-title">Sign in</h2>
+            <div class="field">
+                <label for="login-email">Email</label>
+                <input type="email" id="login-email" name="email" autocomplete="username" required>
+                <span class="field-error" id="login-email-error" data-error-for="email"></span>
+            </div>
+            <div class="field">
+                <label for="login-password">Password</label>
+                <input type="password" id="login-password" name="password" autocomplete="current-password" required>
+                <span class="field-error" id="login-password-error" data-error-for="password"></span>
+            </div>
+            <p id="login-status" class="dialog-status" role="status" aria-live="polite"></p>
+            <div class="dialog-actions">
+                <button type="button" class="btn-secondary" id="register-switch">Create account</button>
+                <button type="submit" class="btn-primary" id="login-submit">Sign in</button>
+            </div>
+        </form>
+    </dialog>
+
+    <dialog id="register-dialog" aria-labelledby="register-dialog-title">
+        <form method="dialog" id="register-form">
+            <h2 id="register-dialog-title">Create account</h2>
+            <div class="field">
+                <label for="register-username">Username</label>
+                <input type="text" id="register-username" name="username" maxlength="50" autocomplete="username" required>
+                <span class="field-error" id="register-username-error" data-error-for="username"></span>
+            </div>
+            <div class="field">
+                <label for="register-email">Email</label>
+                <input type="email" id="register-email" name="email" autocomplete="username" required>
+                <span class="field-error" id="register-email-error" data-error-for="email"></span>
+            </div>
+            <div class="field">
+                <label for="register-password">Password</label>
+                <input type="password" id="register-password" name="password" minlength="8" autocomplete="new-password" required>
+                <span class="field-error" id="register-password-error" data-error-for="password"></span>
+                <span class="hint">At least 8 characters.</span>
+            </div>
+            <p id="register-status" class="dialog-status" role="status" aria-live="polite"></p>
+            <div class="dialog-actions">
+                <button type="button" class="btn-secondary" id="login-switch">Sign in instead</button>
+                <button type="submit" class="btn-primary" id="register-submit">Create account</button>
+            </div>
+        </form>
+    </dialog>
+
+    <dialog id="profile-dialog" aria-labelledby="profile-dialog-title">
+        <form method="dialog" id="profile-form">
+            <h2 id="profile-dialog-title">Modify details</h2>
+            <p class="hint">Saving signs you out, so you can sign in with the new details.</p>
+            <div class="field">
+                <label for="profile-username">Username</label>
+                <input type="text" id="profile-username" name="username" maxlength="50" autocomplete="username" required>
+                <span class="field-error" id="profile-username-error" data-error-for="username"></span>
+            </div>
+            <div class="field">
+                <label for="profile-email">Email</label>
+                <input type="email" id="profile-email" name="email" autocomplete="username" required>
+                <span class="field-error" id="profile-email-error" data-error-for="email"></span>
+            </div>
+            <p id="profile-status" class="dialog-status" role="status" aria-live="polite"></p>
+            <div class="dialog-actions">
+                <button type="submit" class="btn-secondary" value="cancel" autofocus>Cancel</button>
+                <button type="submit" class="btn-primary" id="profile-submit">Save</button>
+            </div>
+        </form>
+    </dialog>
+
+    <dialog id="delete-account-dialog" aria-labelledby="delete-account-dialog-title">
+        <form method="dialog" id="delete-account-form">
+            <h2 id="delete-account-dialog-title">Delete account?</h2>
+            <p>
+                Permanently delete your account <strong id="delete-account-name"></strong>?
+                This cannot be undone.
+            </p>
+            <p id="delete-account-status" class="dialog-status" role="status" aria-live="polite"></p>
+            <div class="dialog-actions">
+                <button type="submit" class="btn-secondary" value="cancel" autofocus>Cancel</button>
+                <button type="submit" class="btn-danger" id="delete-account-submit">Delete account</button>
+            </div>
+        </form>
+    </dialog>
+
+    <script src="/static/auth.js" defer></script>
     <script>
         (() => {
             try {

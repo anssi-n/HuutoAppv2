@@ -1,0 +1,23 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+# Virtual environments
+.venv
+.env
+import_items.py
+import_temp.py
+download_images.py
+old_items.csv
+open_items_full.json
+Dockerfile.memtest
+memtest.py
+username
+password
+media/images
+AGENTS.md
+update_creds.sh
+sync-db.py
