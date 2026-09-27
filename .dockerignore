@@ -12,7 +12,7 @@ import_temp.py
 download_images.py
 old_items.csv
 open_items_full.json
-media/
+media/images
 AGENTS.md
 update_creds.sh
 sync-db.py
