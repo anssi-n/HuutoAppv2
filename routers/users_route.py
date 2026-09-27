@@ -89,14 +89,6 @@ async def get_current_user(current_user: CurrentUser):
     return current_user
 
 
-@router.get("/{user_id}", response_model=users_schema.AppUserResponse)
-async def get_user(user_id: int, db: Annotated[AsyncSession, Depends(get_db)]):
-    result = await db.execute(select(user_model.User).where(user_model.User.id == user_id))
-    user = result.scalars().first()
-    if user:
-        return user
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-
 @router.patch("/{user_id}", response_model=users_schema.AppUserResponse)
 async def update_user(
     user_id: int,
@@ -150,6 +142,37 @@ async def update_user(
     await db.commit()
     await db.refresh(user)
     return user
+
+
+@router.patch("/{user_id}/password", status_code=status.HTTP_204_NO_CONTENT)
+async def change_password(
+    user_id: int,
+    password_change: users_schema.AppUserPasswordChange,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    if user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to change this user's password",
+        )
+
+    result = await db.execute(select(user_model.User).where(user_model.User.id == user_id))
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    if not verify_password(password_change.current_password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect",
+        )
+
+    user.password_hash = hash_password(password_change.new_password)
+    await db.commit()
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)

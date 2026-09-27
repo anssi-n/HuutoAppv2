@@ -8,6 +8,7 @@ from typing import Annotated
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
 from sqlalchemy.orm import selectinload
+from auth import AdminUser
 from db import get_db
 from models import items_model
 from item_config import get_item_config
@@ -88,6 +89,7 @@ async def home(request: Request,
 
 @router.get("/new", include_in_schema=False)
 async def new_item(request: Request,
+                   _current_user: AdminUser,
                    db: Annotated[AsyncSession, Depends(get_db)]):
 
     config = await get_item_config(db)
@@ -102,6 +104,7 @@ async def new_item(request: Request,
 @router.get("/modify/{item_id}", include_in_schema=False)
 async def modify_item(request: Request,
                       item_id: int,
+                      _current_user: AdminUser,
                       db: Annotated[AsyncSession, Depends(get_db)]):
 
     result = await db.execute(
@@ -131,6 +134,7 @@ async def modify_item(request: Request,
 
 @router.get("/import", include_in_schema=False)
 async def import_csv_page(request: Request,
+                          _current_user: AdminUser,
                           db: Annotated[AsyncSession, Depends(get_db)]):
 
     config = await get_item_config(db)
@@ -144,6 +148,7 @@ async def import_csv_page(request: Request,
 
 @router.get("/stats", include_in_schema=False)
 async def statistics(request: Request,
+                     _current_user: AdminUser,
                      db: Annotated[AsyncSession, Depends(get_db)]):
 
     stat_query = {}

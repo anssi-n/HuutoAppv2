@@ -12,6 +12,10 @@ class AppUserUpdate(BaseModel):
     username: str | None = Field(default=None, min_length=1, max_length=50)
     email: EmailStr | None = Field(default=None, max_length=120)
 
+class AppUserPasswordChange(BaseModel):
+    current_password: str = Field(min_length=1)
+    new_password: str = Field(min_length=8)
+
 class AppUserResponse(UserBase):
     id: int
     role: common_types.UserRole

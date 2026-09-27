@@ -167,7 +167,7 @@ async def get_item(item_id: int, db: Annotated[AsyncSession, Depends(get_db)]):
 
 @router.post("", response_model=items_schema.ItemResponse, status_code=status.HTTP_201_CREATED)
 async def create_item(item: items_schema.ItemCreate, 
-                      _: AdminUser,
+                      _current_user: AdminUser,
                       db: Annotated[AsyncSession, Depends(get_db)]):
 
     result = await db.execute(select(items_model.Genre).where(items_model.Genre.id == item.genre_id))
@@ -200,7 +200,7 @@ async def create_item(item: items_schema.ItemCreate,
 
 @router.post("/publish/csv", response_model=items_schema.PublishCsvResponse, status_code=status.HTTP_201_CREATED)
 async def publish_csv(csv: UploadFile,
-                      _: AdminUser,
+                      _current_user: AdminUser,
                       db: Annotated[AsyncSession, Depends(get_db)],
                       redis: Annotated[Redis, Depends(get_redis)]):
 
@@ -305,7 +305,7 @@ async def publish_csv(csv: UploadFile,
 @router.patch("/publish/csvimages", response_model=items_schema.UploadCsvImagesResponse, status_code=status.HTTP_201_CREATED)
 async def upload_csvimages(
     images: list[UploadFile],
-    _: AdminUser,
+    _current_user: AdminUser,
     db: Annotated[AsyncSession, Depends(get_db)],
     redis: Annotated[Redis, Depends(get_redis)]):
 
@@ -340,7 +340,7 @@ async def upload_csvimages(
 
 @router.post("/publish/all", response_model=items_schema.PublishResponse, status_code=status.HTTP_201_CREATED)
 async def publish_all_items(db: Annotated[AsyncSession, Depends(get_db)],
-                            _: AdminUser,
+                            _current_user: AdminUser,
                             redis: Annotated[Redis, Depends(get_redis)]):
 
     now = datetime.now(UTC)
@@ -370,7 +370,7 @@ async def publish_all_items(db: Annotated[AsyncSession, Depends(get_db)],
 @router.post("/publish/{item_id}", response_model=items_schema.PublishResponse, status_code=status.HTTP_201_CREATED)
 async def publish_item(item_id: int,
                        add_keywords: Annotated[int, Query(ge=0,le=1 )],
-                       _: AdminUser,
+                       _current_user: AdminUser,
                        db: Annotated[AsyncSession, Depends(get_db)],
                        redis: Annotated[Redis, Depends(get_redis)]):
 
@@ -394,7 +394,7 @@ async def publish_item(item_id: int,
 @router.post("/relist/all", response_model=items_schema.PublishResponse, status_code=status.HTTP_201_CREATED)
 async def relist_all_items(db: Annotated[AsyncSession, Depends(get_db)],
                            redis: Annotated[Redis, Depends(get_redis)],
-                           _: AdminUser):
+                           _current_user: AdminUser):
 
     task_id = await create_queue_msg(
         0,
@@ -412,7 +412,7 @@ async def relist_item(item_id: int,
                       add_keywords: Annotated[int, Query(ge=0,le=1 )],
                       db: Annotated[AsyncSession, Depends(get_db)],
                       redis: Annotated[Redis, Depends(get_redis)],
-                      _: AdminUser):
+                      _current_user: AdminUser):
 
     result = await db.execute(select(items_model.HuutoItem).where(items_model.HuutoItem.id == item_id))
     item = result.scalars().first()
@@ -439,7 +439,7 @@ async def relist_item(item_id: int,
 @router.patch("/{item_id}", response_model=items_schema.ItemResponse)
 async def update_item(item_id: int, 
                       item_data: items_schema.ItemUpdate,
-                      _: AdminUser, 
+                      _current_user: AdminUser, 
                       db: Annotated[AsyncSession, Depends(get_db)]):
     result = await db.execute(select(items_model.HuutoItem).where(items_model.HuutoItem.id == item_id))
     item = result.scalars().first()
@@ -457,7 +457,7 @@ async def update_item(item_id: int,
 @router.delete("/all", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_all_items(db: Annotated[AsyncSession, Depends(get_db)],
                            redis: Annotated[Redis, Depends(get_redis)],
-                           _: AdminUser):
+                           _current_user: AdminUser):
 
     result = await db.execute(select(items_model.HuutoItem))
     items = result.scalars().all()
@@ -482,7 +482,7 @@ async def delete_all_items(db: Annotated[AsyncSession, Depends(get_db)],
 @router.delete("/{item_id}", response_model=items_schema.DeleteResponse, status_code=status.HTTP_200_OK)
 async def delete_item(db: Annotated[AsyncSession, Depends(get_db)],
                       redis: Annotated[Redis, Depends(get_redis)],
-                      _: AdminUser,
+                      _current_user: AdminUser,
                       item_id: int, 
                       close_huuto_only: bool = False ):
 
@@ -532,7 +532,7 @@ async def add_item_image(
     phase: Annotated[ImagePhase, Form()],
     db: Annotated[AsyncSession, Depends(get_db)],
     redis: Annotated[Redis, Depends(get_redis)],
-    _: AdminUser):
+    _current_user: AdminUser):
 
     result = await db.execute(select(items_model.HuutoItem).
                               options(selectinload(items_model.HuutoItem.shipping),
@@ -596,7 +596,7 @@ async def delete_item_image(item_id: int,
                             image_id: int, 
                             db: Annotated[AsyncSession, Depends(get_db)],
                             redis: Annotated[Redis, Depends(get_redis)],
-                            _: AdminUser):
+                            _current_user: AdminUser):
 
     result = await db.execute(select(items_model.HuutoItem).
                               options(selectinload(items_model.HuutoItem.shipping),
