@@ -6,6 +6,8 @@
 
 const TOKEN_KEY = "huutoapp-token";
 const USERS_URL = "/api/v1/users";
+const EXPIRED_MESSAGE = "Your session has expired. Please sign in again.";
+const FORBIDDEN_MESSAGE = "You do not have permission to view that page.";
 
 const getToken = () => localStorage.getItem(TOKEN_KEY);
 
@@ -15,6 +17,23 @@ function setToken(token) {
 
 function clearToken() {
     localStorage.removeItem(TOKEN_KEY);
+}
+
+/* Expiry is read from the token's own payload purely to time the UI. It is not
+   trusted for anything: the server still verifies every request, and a tampered
+   token just yields a null exp and is rejected on the next call. */
+function tokenExpiryMs() {
+    const token = getToken();
+    if (!token) return null;
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    try {
+        const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+        const payload = JSON.parse(atob(b64));
+        return typeof payload.exp === "number" ? payload.exp * 1000 : null;
+    } catch (err) {
+        return null;
+    }
 }
 
 /* The auth cookie is HttpOnly, so only the server can clear it. Sign-out and
@@ -52,7 +71,11 @@ async function apiFetch(path, options = {}) {
     if (response.status === 401) {
         clearToken();
         if (sessionExpiredHandler) {
-            sessionExpiredHandler("Your session has expired. Please sign in again.");
+            sessionExpiredHandler(EXPIRED_MESSAGE);
+        } else {
+            /* Admin sub-pages have no account UI to fall back to, so send the
+               browser to the home page, which explains the expiry. */
+            window.location.replace("/?auth=expired");
         }
     }
     return response;
@@ -111,6 +134,10 @@ const disableForm = (form, button, busy, busyText) => {
 
     function onLoggedOut(message) {
         currentUser = null;
+        if (expiryTimer) {
+            clearTimeout(expiryTimer);
+            expiryTimer = null;
+        }
         // No admin role, so the admin-only controls stay hidden.
         delete document.documentElement.dataset.role;
         if (actions) actions.hidden = true;
@@ -127,6 +154,29 @@ const disableForm = (form, button, busy, busyText) => {
     }
 
     sessionExpiredHandler = onLoggedOut;
+
+    /* Drop the session locally the moment the token expires, so admin-only
+       controls disappear instead of staying visible until the next request. */
+    let expiryTimer = null;
+    const scheduleExpiry = (user) => {
+        if (expiryTimer) {
+            clearTimeout(expiryTimer);
+            expiryTimer = null;
+        }
+        const exp = tokenExpiryMs();
+        if (exp === null) return;
+        const delay = exp - Date.now();
+        if (delay <= 0) {
+            clearToken();
+            onLoggedOut(EXPIRED_MESSAGE);
+            return;
+        }
+        expiryTimer = setTimeout(() => {
+            expiryTimer = null;
+            clearToken();
+            onLoggedOut(EXPIRED_MESSAGE);
+        }, Math.min(delay, 2147483647));
+    };
 
     function onLoggedIn(user) {
         currentUser = user;
@@ -146,6 +196,7 @@ const disableForm = (form, button, busy, busyText) => {
         if (actions) actions.hidden = false;
         if (anon) anon.hidden = true;
         setStatus(document.getElementById("account-status"), "");
+        scheduleExpiry(user);
     }
 
     /* ---------- login ---------- */
@@ -424,9 +475,24 @@ const disableForm = (form, button, busy, busyText) => {
 
     /* ---------- restore session ---------- */
     (async () => {
+        // The admin-only pages redirect here with ?auth= when the session is no
+        // longer usable, so the user gets an explanation and a sign-in prompt
+        // instead of the API's raw JSON body.
+        const authFlag = new URLSearchParams(window.location.search).get("auth");
+        if (authFlag) {
+            window.history.replaceState({}, "", window.location.pathname);
+        }
+        if (authFlag === "expired") {
+            clearToken();
+        }
+
         // No token means the anonymous menu, so the account button must be shown.
         if (!getToken()) {
             onLoggedOut();
+            if (authFlag === "expired") {
+                setStatus(loginStatus, EXPIRED_MESSAGE, true);
+                openDialog(loginDialog);
+            }
             return;
         }
         try {
@@ -434,6 +500,9 @@ const disableForm = (form, button, busy, busyText) => {
             if (response.status === 401) return;
             if (!response.ok) throw new Error(`server returned HTTP ${response.status}`);
             onLoggedIn(await response.json());
+            if (authFlag === "forbidden") {
+                setStatus(document.getElementById("account-status"), FORBIDDEN_MESSAGE, true);
+            }
         } catch (err) {
             console.error("Unable to restore session", err);
             onLoggedOut();

@@ -74,6 +74,25 @@ async def get_access_token(
     return request.cookies.get(AUTH_COOKIE_NAME)
 
 
+async def _user_from_token(
+    token: str,
+    db: AsyncSession,
+) -> user_model.User | None:
+    user_id = verify_access_token(token)
+    if user_id is None:
+        return None
+
+    try:
+        user_id_int = int(user_id)
+    except (TypeError, ValueError):
+        return None
+
+    result = await db.execute(
+        select(user_model.User).where(user_model.User.id == user_id_int),
+    )
+    return result.scalars().first()
+
+
 async def get_current_user(
     token: Annotated[str | None, Depends(get_access_token)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -85,31 +104,11 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    user_id = verify_access_token(token)
-    if user_id is None:
+    user = await _user_from_token(token, db)
+    if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    try:
-        user_id_int = int(user_id)
-    except (TypeError, ValueError):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    result = await db.execute(
-        select(user_model.User).where(user_model.User.id == user_id_int),
-    )
-    user = result.scalars().first()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
             headers={"WWW-Authenticate": "Bearer"},
         )
     return user
@@ -130,3 +129,36 @@ def require_roles(*allowed_roles: str):
 require_admin = require_roles(common_types.UserRole.admin)
 CurrentUser = Annotated[user_model.User, Depends(get_current_user)]
 AdminUser = Annotated[CurrentUser, Depends(require_admin)]
+
+
+class PageAuthRedirect(Exception):
+    """Signalled by the guard on the admin-only HTML pages.
+
+    Those routes are reached by plain browser navigations, which would render
+    the API's JSON 401/403 body as-is. An app-level handler turns this into a
+    redirect back to the UI, which then shows a sign-in prompt.
+    """
+
+    def __init__(self, url: str) -> None:
+        self.url = url
+        super().__init__(url)
+
+
+def require_admin_page(expired_url: str = "/?auth=expired"):
+    """Dependency for admin-only HTML pages; redirects instead of returning JSON."""
+
+    async def page_guard(
+        token: Annotated[str | None, Depends(get_access_token)],
+        db: Annotated[AsyncSession, Depends(get_db)],
+    ) -> user_model.User:
+        user = await _user_from_token(token, db) if token else None
+        if user is None:
+            raise PageAuthRedirect(expired_url)
+        if user.role != common_types.UserRole.admin:
+            raise PageAuthRedirect("/?auth=forbidden")
+        return user
+
+    return page_guard
+
+
+PageAdminUser = Annotated[user_model.User, Depends(require_admin_page())]
