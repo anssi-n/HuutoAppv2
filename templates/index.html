@@ -1055,7 +1055,7 @@
         <div id="details-content">
             <div id="details-preview">
                 <img id="details-image" hidden alt="">
-                <ul id="details-thumbs" hidden aria-label="All images"></ul>
+                <ul id="details-thumbs" hidden aria-label="Full-size images"></ul>
             </div>
             <div id="details-info">
                 <p id="details-error" role="status" aria-live="polite"></p>
@@ -1247,14 +1247,20 @@
                         }
                         const item = await resp.json();
 
-                        const preview = item.images.find((im) => im.file_type === "preview") || item.images[0];
-                        if (preview) {
-                            detailsImageEl.src = `/media/images/${preview.filename}`;
+                        /* Only the fullsize images are offered. The preview row is a
+                           generated thumbnail of an image that is already stored at
+                           full size, so listing it would just show the same picture
+                           twice at two resolutions. */
+                        const images = (Array.isArray(item.images) ? item.images : [])
+                            .filter((im) => im.file_type === "fullsize");
+
+                        const mainImage = images[0];
+                        if (mainImage) {
+                            detailsImageEl.src = `/media/images/${mainImage.filename}`;
                             detailsImageEl.alt = item.title;
                             detailsImageEl.hidden = false;
                         }
 
-                        const images = Array.isArray(item.images) ? item.images : [];
                         if (images.length > 1) {
                             images.forEach((im, index) => {
                                 const li = document.createElement("li");
