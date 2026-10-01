@@ -833,9 +833,15 @@
             </form>
             <span class="muted">{{ total }} item{% if total != 1 %}s{% endif %}</span>
             <span class="toolbar-actions">
-                {% if publish_all_count %}
-                    <button type="button" id="publish-all-btn" class="btn-import icon-btn" data-admin-only
-                            aria-label="Publish all drafts and closed items" title="Publish all drafts and closed items">
+                {% if closed_count %}
+                    <button type="button" id="relist-all-btn" class="btn-import icon-btn" data-admin-only
+                            aria-label="Relist all closed items" title="Relist all closed items">
+                        <img src="/media/icons/publish.png" alt="" width="20" height="20">
+                    </button>
+                {% endif %}
+                {% if draft_count %}
+                    <button type="button" id="publish-drafts-btn" class="btn-import icon-btn" data-admin-only
+                            aria-label="Publish all drafts" title="Publish all drafts">
                         <img src="/media/icons/publish.png" alt="" width="20" height="20">
                     </button>
                 {% endif %}
@@ -881,6 +887,7 @@
 
         <p id="delete-status" role="status" aria-live="polite"></p>
         <p id="publish-all-status" role="status" aria-live="polite"></p>
+        <p id="publish-drafts-status" role="status" aria-live="polite"></p>
 
         {% macro filter_qs() -%}{% if mf_filter %}&media_format_id={{ mf_filter }}{% endif %}{% if genre_filter %}&genre_id={{ genre_filter }}{% endif %}{% if cond_filter %}&condition_id={{ cond_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{%- endmacro %}
         {% macro page_url(skip) -%}/?skip={{ skip }}&limit={{ limit }}&order_by={{ order_by }}{% if search %}&search={{ search }}{% endif %}{{ filter_qs() }}{%- endmacro %}
@@ -1241,7 +1248,7 @@
                     detailsThumbsEl.hidden = true;
                     detailsMetaEl.replaceChildren();
                     try {
-                        const resp = await fetch(`/api/v1/items/${id}`);
+                        const resp = await apiFetch(`/api/v1/items/${id}`);
                         if (!resp.ok) {
                             throw new Error(`Server returned ${resp.status}`);
                         }
@@ -1358,7 +1365,7 @@
                 statusEl.textContent = "Deleting…";
                 try {
                     const closeHuuto = closeHuutoEl.checked ? 1 : 0;
-                const response = await fetch(`/api/v1/items/${id}?close_huuto_only=${closeHuuto}`, { method: "DELETE" });
+                const response = await apiFetch(`/api/v1/items/${id}?close_huuto_only=${closeHuuto}`, { method: "DELETE" });
                     if (!response.ok) {
                         throw new Error(`Server returned ${response.status}`);
                     }
@@ -1397,7 +1404,7 @@
                 publishStatusEl.textContent = "Publishing…";
                 const addKeywords = publishKeywordsEl.checked ? 1 : 0;
                 try {
-                    const response = await fetch(`/api/v1/items/${route}/${id}?add_keywords=${addKeywords}`, { method: "POST" });
+                    const response = await apiFetch(`/api/v1/items/${route}/${id}?add_keywords=${addKeywords}`, { method: "POST" });
                     if (!response.ok) {
                         throw new Error(`Server returned ${response.status}`);
                     }
@@ -1410,22 +1417,45 @@
                 }
             });
 
-            const publishAllBtn = document.getElementById("publish-all-btn");
-            const publishAllStatusEl = document.getElementById("publish-all-status");
-            if (publishAllBtn) {
-                publishAllBtn.addEventListener("click", async () => {
-                    publishAllBtn.disabled = true;
-                    if (publishAllStatusEl) publishAllStatusEl.textContent = "Publishing all drafts and closed items…";
+            /* Both bulk actions enqueue a single task and let the worker fan the
+               items out, rather than the API looping over them itself. */
+            const relistAllBtn = document.getElementById("relist-all-btn");
+            const relistAllStatusEl = document.getElementById("publish-all-status");
+            if (relistAllBtn) {
+                relistAllBtn.addEventListener("click", async () => {
+                    relistAllBtn.disabled = true;
+                    if (relistAllStatusEl) relistAllStatusEl.textContent = "Queueing relist for all closed items…";
                     try {
-                        const response = await fetch("/api/v1/items/publish/all", { method: "POST" });
+                        const response = await apiFetch("/api/v1/items/relist/all", { method: "POST" });
                         if (!response.ok) {
                             throw new Error(`Server returned ${response.status}`);
                         }
-                        if (publishAllStatusEl) publishAllStatusEl.textContent = "Publish queued for all drafts and closed items.";
+                        if (relistAllStatusEl) relistAllStatusEl.textContent = "Relist queued for all closed items.";
                         window.location.reload();
                     } catch (err) {
-                        if (publishAllStatusEl) publishAllStatusEl.textContent = `Publish all failed: ${err.message}. Please try again.`;
-                        publishAllBtn.disabled = false;
+                        if (relistAllStatusEl) relistAllStatusEl.textContent = `Relist all failed: ${err.message}. Please try again.`;
+                        relistAllBtn.disabled = false;
+                        console.error(err);
+                    }
+                });
+            }
+
+            const publishDraftsBtn = document.getElementById("publish-drafts-btn");
+            const publishDraftsStatusEl = document.getElementById("publish-drafts-status");
+            if (publishDraftsBtn) {
+                publishDraftsBtn.addEventListener("click", async () => {
+                    publishDraftsBtn.disabled = true;
+                    if (publishDraftsStatusEl) publishDraftsStatusEl.textContent = "Queueing all drafts for publishing…";
+                    try {
+                        const response = await apiFetch("/api/v1/items/publish/drafts", { method: "POST" });
+                        if (!response.ok) {
+                            throw new Error(`Server returned ${response.status}`);
+                        }
+                        if (publishDraftsStatusEl) publishDraftsStatusEl.textContent = "Publish queued for all drafts.";
+                        window.location.reload();
+                    } catch (err) {
+                        if (publishDraftsStatusEl) publishDraftsStatusEl.textContent = `Publish drafts failed: ${err.message}. Please try again.`;
+                        publishDraftsBtn.disabled = false;
                         console.error(err);
                     }
                 });

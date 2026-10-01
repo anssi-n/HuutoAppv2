@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.templating import Jinja2Templates
 from typing import Annotated
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_
+from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from auth import PageAdminUser
 from db import get_db
@@ -51,11 +51,15 @@ async def home(request: Request,
              if p == 1 or p == total_pages or abs(p - current_page) <= 2]
 
     now = datetime.now(UTC)
-    publish_all_count = (await db.execute(
-        select(func.count()).select_from(items_model.HuutoItem).where(or_(
-            items_model.HuutoItem.huuto_id.is_(None),
-            items_model.HuutoItem.huuto_closing_time.is_(None),
-            items_model.HuutoItem.huuto_closing_time < now))
+    # Mirrors the two bulk actions: /relist/all picks up items whose listing has
+    # closed, /publish/drafts picks up items that were never listed.
+    closed_count = (await db.execute(
+        select(func.count()).select_from(items_model.HuutoItem)
+        .where(items_model.HuutoItem.huuto_closing_time < now)
+    )).scalar() or 0
+    draft_count = (await db.execute(
+        select(func.count()).select_from(items_model.HuutoItem)
+        .where(items_model.HuutoItem.huuto_id.is_(None))
     )).scalar() or 0
 
     config = await get_item_config(db)
@@ -81,7 +85,8 @@ async def home(request: Request,
             "genre_filter": str(genre_id) if genre_id is not None else "",
             "cond_filter": str(condition_id) if condition_id is not None else "",
             "status_filter": status or "",
-            "publish_all_count": publish_all_count,
+            "closed_count": closed_count,
+            "draft_count": draft_count,
             "favicon_file": settings.favicon_file,
         }
     )

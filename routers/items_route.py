@@ -367,6 +367,39 @@ async def publish_all_items(db: Annotated[AsyncSession, Depends(get_db)],
     )
 
 
+@router.post("/publish/drafts", response_model=items_schema.PublishResponse, status_code=status.HTTP_201_CREATED)
+async def publish_all_drafts(db: Annotated[AsyncSession, Depends(get_db)],
+                             _current_user: AdminUser,
+                             redis: Annotated[Redis, Depends(get_redis)]):
+
+    """Queue an AddItem task for every item that has never been published.
+
+    Closed items are deliberately excluded: re-adding one would create a second
+    listing on huuto.net rather than relisting the existing one, which is what
+    /relist/all is for.
+    """
+    result = await db.execute(
+        select(items_model.HuutoItem).where(items_model.HuutoItem.huuto_id.is_(None)),
+    )
+    items = result.scalars().all()
+
+    task_id = 0
+    for item in items:
+        task_id = await create_queue_msg(
+            item.id,
+            common_types.TaskType.AddItem,
+            0,
+            {"item_id": item.id},
+            db,
+            redis
+        )
+
+    return items_schema.PublishResponse(
+        task_id=task_id,
+        title=f"{len(items)} draft(s) queued for publishing.",
+    )
+
+
 @router.post("/publish/{item_id}", response_model=items_schema.PublishResponse, status_code=status.HTTP_201_CREATED)
 async def publish_item(item_id: int,
                        add_keywords: Annotated[int, Query(ge=0,le=1 )],
