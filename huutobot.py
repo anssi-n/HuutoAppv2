@@ -36,7 +36,7 @@ class HuutoItemError(Exception):
 def authenticated(fn: Callable) -> Callable:
     @wraps(fn)
     def wrapper(self: HuutoBot, *args, **kwargs):
-        if hasattr(self, "auth_token") or not self.auth_token.is_valid:
+        if (not hasattr(self, "auth_token")) or (not self.auth_token.is_valid):
             logger.info("Authentication token does not exist or has expired. Re-authenticating.")
             self._authenticate()
         else:
