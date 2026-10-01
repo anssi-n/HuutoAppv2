@@ -214,10 +214,13 @@ def process_message(queue: redis.Redis, message_json: str, bot: HuutoBot) -> Non
                     result = execute_task(relist_all_items, queue, bot, message)
                 case common_types.TaskType.AddImage:  
                     logger.error("AddImage task is not yet implemented.")
+                    result = None
                 case common_types.TaskType.DeleteImage:
                     logger.error("DeleteImage task is not yet implemented.")
+                    result = None
                 case _:
                     logger.error(f"Unknown task type {message.task.task}")
+                    result = None
 
             if result:
                 logger.info(f"Task {message.task.task} executed successfully.")
