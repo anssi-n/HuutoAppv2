@@ -1,5 +1,6 @@
 import httpx
 from http import HTTPStatus
+import time
 from schemas import huutonet_schema
 from logger import logger
 from types import TracebackType
@@ -8,6 +9,16 @@ from config import settings
 from functools import wraps
 from typing import Callable
 from image_utils import IMAGE_DIR
+from enum import StrEnum
+
+class Method(StrEnum):
+    GET = "GET"
+    POST = "POST"
+    PUT = "PUT"
+    PATCH = "PATCH"
+    DELETE = "DELETE"
+    HEAD = "HEAD"
+    OPTIONS = "OPTIONS"
 
 class HuutoAuthenticationFailed(Exception):
     def __init__(self, message: str | None = None):
@@ -33,6 +44,20 @@ def authenticated(fn: Callable) -> Callable:
         return fn(self, *args, **kwargs)
     return wrapper
 
+def huuto_rate_limiter() -> Callable:
+    def decorator(fn: Callable) -> Callable:
+        last = 0.0
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            nonlocal last
+            wait = settings.huutoapi_delay - (time.monotonic() - last)
+            if wait > 0:
+                time.sleep(wait)
+                last = time.monotonic()
+            return fn(*args, **kwargs)
+        return wrapper
+    return decorator
+
 class HuutoBot:
     def __init__(self) -> None:
         self.client = httpx.Client()
@@ -57,8 +82,17 @@ class HuutoBot:
         self.client.close()
         logger.info("HTTPX client closed.")
 
+    @huuto_rate_limiter
+    def _execute_api_call(self, method: Method, url: str, **extra_params) -> httpx.Response: 
+        current_delay = 1
+        while (resp := self.client.request(method, url, **extra_params)).status_code == HTTPStatus.TOO_MANY_REQUESTS:
+            time.sleep(current_delay)
+            current_delay += 0.5
+        return resp
+
+    @authenticated
     def _authenticate(self) -> None:
-        resp = self.client.post(f"https://api.huuto.net/1.1/authentication?username={settings.huuto_username}&password={settings.huuto_password.get_secret_value()}")
+        resp = self._execute_api_call(Method.POST, f"https://api.huuto.net/1.1/authentication?username={settings.huuto_username}&password={settings.huuto_password.get_secret_value()}")
         if resp.status_code not in (HTTPStatus.OK, HTTPStatus.CREATED):
             logger.error(f"Authentication failed with status code {resp.status_code}: {resp.json()}")
             raise HuutoAuthenticationFailed()
@@ -69,8 +103,7 @@ class HuutoBot:
         self.client.headers["X-HuutoApiToken"] = self.auth_token.id
 
     def get_item(self, item_id: int) -> huutonet_schema.HuutoItem:
-
-        resp = self.client.get(f"https://api.huuto.net/1.1/items/{item_id}")
+        resp = self._execute_api_call(Method.GET, f"https://api.huuto.net/1.1/items/{item_id}")
                             
         if resp.status_code != HTTPStatus.OK:
             logger.error(f"Getting item data for Huuto item {item_id} failed with status code {resp.status_code}: {resp.json()}")
@@ -81,7 +114,7 @@ class HuutoBot:
     @authenticated
     def add_item(self, item: huutonet_schema.HuutoItem) -> int:
 
-        resp = self.client.post("https://api.huuto.net/1.1/items/", json=item.model_dump(by_alias=True, exclude_none=True))
+        resp = self._execute_api_call("POST","https://api.huuto.net/1.1/items/", json=item.model_dump(by_alias=True, exclude_none=True))
                             
         if resp.status_code != HTTPStatus.CREATED:
             logger.error(f"Adding new item {item} failed with status code {resp.status_code}: {resp.json()}")
@@ -98,12 +131,9 @@ class HuutoBot:
             logger.error(f"Image file {image_file} does not exists in image directory.")
             raise HuutoItemError(f"Image file {image_file} does not exists in image directory.", item_id)
 
-        if not self.auth_token.is_valid:
-            self._authenticate()
-
         with open(IMAGE_DIR / image_file, "rb") as image:
             files = {"image": image}
-            resp = self.client.post(f"https://api.huuto.net/1.1/items/{item_id}/images", files=files, timeout=30)
+            resp = self._execute_api_call(Method.POST,f"https://api.huuto.net/1.1/items/{item_id}/images", files=files, timeout=30)
                                 
             if resp.status_code != HTTPStatus.CREATED:
                 logger.error(f"Adding image {image_file} to item {item_id} failed with status code {resp.status_code}: {resp.json()}")
@@ -115,7 +145,7 @@ class HuutoBot:
 
     @authenticated
     def edit_item(self, item_id: int, item_data: huutonet_schema.HuutoItem) -> None:
-        resp = self.client.put(f"https://api.huuto.net/1.1/items/{item_id}", json=item_data.model_dump(by_alias=True, exclude_none=True))
+        resp = self._execute_api_call("PUT",f"https://api.huuto.net/1.1/items/{item_id}", json=item_data.model_dump(by_alias=True, exclude_none=True))
                             
         if resp.status_code != HTTPStatus.OK:
             logger.error(f"Editing item {item_id} with data {item_data} failed with status code {resp.status_code}: {resp.json()}")
@@ -125,7 +155,7 @@ class HuutoBot:
 
     @authenticated
     def delete_draft(self, item_id: int) -> None:
-        resp = self.client.delete(f"https://api.huuto.net/1.1/items/{item_id}")
+        resp = self._execute_api_call("DELETE",f"https://api.huuto.net/1.1/items/{item_id}")
                             
         if resp.status_code != HTTPStatus.NO_CONTENT:
             logger.error(f"Deleting draft {item_id} failed with status code {resp.status_code}: {resp.json()}")
@@ -134,7 +164,7 @@ class HuutoBot:
 
     @authenticated
     def delete_image(self, item_id: int, image_id: int) -> bool:
-        resp = self.client.delete(f"https://api.huuto.net/1.1/items/{item_id}/images/{image_id}")
+        resp = self._execute_api_call("DELETE",f"https://api.huuto.net/1.1/items/{item_id}/images/{image_id}")
 
         if resp.status_code != HTTPStatus.NO_CONTENT:
             logger.error(f"Deleting image {image_id} from item {item_id} failed with status code {resp.status_code}: {resp.json()}", item_id)

@@ -4,7 +4,6 @@ from logger import logger, LoggingConfigListener, HttpxRedactFilter
 import logging
 from uuid import uuid4
 import sys
-import time
 import os
 import datetime
 from typing import Callable
@@ -30,7 +29,7 @@ QUEUE_LENGTH = Gauge(
 )
 
 @task_latency
-def relist_all_items(queue: redis.Redis, message: huutoapp_queue_schema.QueueMessage) -> bool:
+def relist_all_items(queue: redis.Redis, _: HuutoBot, message: huutoapp_queue_schema.QueueMessage) -> bool:
     items = get_closed_items()
     total_items = len(items)
     parent_id = str(uuid4())
@@ -49,7 +48,7 @@ def relist_all_items(queue: redis.Redis, message: huutoapp_queue_schema.QueueMes
     return True
 
 @task_latency
-def relist_item(_: redis.Redis, message: huutoapp_queue_schema.QueueMessage) -> None:
+def relist_item(_: redis.Redis, bot: HuutoBot, message: huutoapp_queue_schema.QueueMessage) -> None:
     item = get_item(message.task.id)
     if item is None:
        raise  ItemNotFound(f"No item found with id {message.task.id}")
@@ -73,13 +72,12 @@ def relist_item(_: redis.Redis, message: huutoapp_queue_schema.QueueMessage) -> 
     parent_id, last_item, parent_log_id = get_parent_id(message.task.log_id)
 
     try:
-        with HuutoBot() as bot:
-            closing_time_datetime, closing_time_str = generate_end_time()
-            new_huuto_id = bot.add_item(huutonet_schema.HuutoItem(original_id=item.huuto_id))
-            bot.edit_item(new_huuto_id, huutonet_schema.HuutoItem(closing_time=closing_time_str, description=full_item_description))
-            bot.edit_item(new_huuto_id, huutonet_schema.HuutoItem(status=huutonet_schema.Status.PREVIEW))
-            bot.edit_item(new_huuto_id, huutonet_schema.HuutoItem(status=huutonet_schema.Status.PUBLISHED))
-            item = save_item(item.id, huuto_id=new_huuto_id, end_time=closing_time_datetime)
+        closing_time_datetime, closing_time_str = generate_end_time()
+        new_huuto_id = bot.add_item(huutonet_schema.HuutoItem(original_id=item.huuto_id))
+        bot.edit_item(new_huuto_id, huutonet_schema.HuutoItem(closing_time=closing_time_str, description=full_item_description))
+        bot.edit_item(new_huuto_id, huutonet_schema.HuutoItem(status=huutonet_schema.Status.PREVIEW))
+        bot.edit_item(new_huuto_id, huutonet_schema.HuutoItem(status=huutonet_schema.Status.PUBLISHED))
+        item = save_item(item.id, huuto_id=new_huuto_id, end_time=closing_time_datetime)
     except (HuutoAuthenticationFailed, HuutoItemError) as err:
         if parent_id is not None:
             err.parent_log_id = parent_log_id
@@ -94,14 +92,13 @@ def relist_item(_: redis.Redis, message: huutoapp_queue_schema.QueueMessage) -> 
             logger.error(f"Parent log id not found with parent id {parent_id} and {last_item=}")        
 
 @task_latency
-def close_item(_: redis.Redis, message: huutoapp_queue_schema.QueueMessage) -> None:
-    with HuutoBot() as bot:
-        bot.edit_item(message.task.id, huutonet_schema.HuutoItem(status=huutonet_schema.Status.CLOSED))
-        details = {"details": {"retries": {f"{message.retries}": {"status": common_types.TaskStatus.success, "huuto_item": message.task.id}}}}
-        update_status(message.task.log_id, common_types.TaskStatus.success, end_time=datetime.datetime.now(), details=details)
+def close_item(_: redis.Redis, bot: HuutoBot, message: huutoapp_queue_schema.QueueMessage) -> None:
+    bot.edit_item(message.task.id, huutonet_schema.HuutoItem(status=huutonet_schema.Status.CLOSED))
+    details = {"details": {"retries": {f"{message.retries}": {"status": common_types.TaskStatus.success, "huuto_item": message.task.id}}}}
+    update_status(message.task.log_id, common_types.TaskStatus.success, end_time=datetime.datetime.now(), details=details)
     
 @task_latency
-def add_item(_: redis.Redis, message: huutoapp_queue_schema.QueueMessage) -> None:
+def add_item(_: redis.Redis, bot: HuutoBot, message: huutoapp_queue_schema.QueueMessage) -> None:
 
     item = get_item(message.task.id)
     full_item_description = f"<p>{item.description}</p>"
@@ -130,21 +127,20 @@ def add_item(_: redis.Redis, message: huutoapp_queue_schema.QueueMessage) -> Non
         delivery_price = item.shipping.value,
         delivery_terms = settings.delivery_terms)
 
-    with HuutoBot() as bot:
-        huuto_id = bot.add_item(huuto_item)
-        images = { image.id: bot.add_image_to_item(huuto_id, image.filename) for image in item.images if image.file_type == "fullsize"}
-        print(images)
-        bot.edit_item(huuto_id, huutonet_schema.HuutoItem(status=huutonet_schema.Status.PUBLISHED))
-        item = save_item(item.id, huuto_id=huuto_id, huuto_image_ids=images, end_time=closing_time_datetime)
+    huuto_id = bot.add_item(huuto_item)
+    images = { image.id: bot.add_image_to_item(huuto_id, image.filename) for image in item.images if image.file_type == "fullsize"}
+    print(images)
+    bot.edit_item(huuto_id, huutonet_schema.HuutoItem(status=huutonet_schema.Status.PUBLISHED))
+    item = save_item(item.id, huuto_id=huuto_id, huuto_image_ids=images, end_time=closing_time_datetime)
 
-        details = {"details": {"retries": {f"{message.retries}": {"status": common_types.TaskStatus.success, "item": items_schema.ItemResponse.model_validate(item).model_dump(exclude={'created_at','huuto_closing_time'})}}}}
-        update_status(message.task.log_id, common_types.TaskStatus.success, end_time=datetime.datetime.now(), details=details)
+    details = {"details": {"retries": {f"{message.retries}": {"status": common_types.TaskStatus.success, "item": items_schema.ItemResponse.model_validate(item).model_dump(exclude={'created_at','huuto_closing_time'})}}}}
+    update_status(message.task.log_id, common_types.TaskStatus.success, end_time=datetime.datetime.now(), details=details)
 
 
-def execute_task(fn: Callable, queue: redis.Redis, message: huutoapp_queue_schema.QueueMessage) -> bool:
+def execute_task(fn: Callable, queue: redis.Redis, bot: HuutoBot, message: huutoapp_queue_schema.QueueMessage) -> bool:
     exception_occured: BaseException | None = None
     try:
-        fn(queue, message)
+        fn(queue, bot, message)
         return True
     except ItemNotFound as err:
         logger.error(f"Item {err.item_id} not found: {str(err)}")
@@ -162,13 +158,12 @@ def execute_task(fn: Callable, queue: redis.Redis, message: huutoapp_queue_schem
         # Delete failed draft if it exists
         if err.huuto_id is not None:
             try:
-                with HuutoBot() as bot:
-                    bot.delete_draft(err.huuto_id)
-                    logger.info(f"Draft {err.huuto_id} deleted successfully. Retrying...")
-                    details = {"details": {"retries": {f"{message.retries}": {"status": common_types.TaskStatus.fail, "error": str(err)}}}}
-                    update_status(message.task.log_id, common_types.TaskStatus.ongoing, details=details)
-                    message.retries += 1
-                    push_retry(queue, message)
+                bot.delete_draft(err.huuto_id)
+                logger.info(f"Draft {err.huuto_id} deleted successfully. Retrying...")
+                details = {"details": {"retries": {f"{message.retries}": {"status": common_types.TaskStatus.fail, "error": str(err)}}}}
+                update_status(message.task.log_id, common_types.TaskStatus.ongoing, details=details)
+                message.retries += 1
+                push_retry(queue, message)
             except Exception as e:
                 logger.critical(f"Unable to delete draft {err.huuto_id}. Retries cancelled.")
                 details = {"details": {"retries": {f"{message.retries}": {"status": common_types.TaskStatus.fail, "error": str(err)+str(e)}}}}
@@ -196,7 +191,7 @@ def execute_task(fn: Callable, queue: redis.Redis, message: huutoapp_queue_schem
                 status=f"nok, {type(exception_occured).__qualname__}",
             ).inc()
 
-def process_message(queue: redis.Redis, message_json: str) -> None:
+def process_message(queue: redis.Redis, message_json: str, bot: HuutoBot) -> None:
     try:
         message = huutoapp_queue_schema.QueueMessage.model_validate_json(message_json)   
         logger.info(f"Valid message received: {message}")
@@ -205,18 +200,18 @@ def process_message(queue: redis.Redis, message_json: str) -> None:
             match message.task.task:
                 case common_types.TaskType.AddItem:
                     logger.info("Processing AddItem task.")
-                    result = execute_task(add_item, queue, message)
+                    result = execute_task(add_item, queue, bot, message)
                 case common_types.TaskType.CloseItem:
                     logger.info("Processing CloseItem task.")
-                    result = execute_task(close_item, queue, message)
+                    result = execute_task(close_item, queue, bot, message)
                 case common_types.TaskType.RelistItem:
                     logger.info("Processing RelistItem task.")
-                    result = execute_task(relist_item, queue, message)
+                    result = execute_task(relist_item, queue, bot, message)
                 case common_types.TaskType.UpdateItem:
                     logger.error("UpdateItem task is not yet implemented.")
                 case common_types.TaskType.RelistAllItems:
                     logger.info("Processing RelistAllItems task.")
-                    result = execute_task(relist_all_items, queue, message)
+                    result = execute_task(relist_all_items, queue, bot, message)
                 case common_types.TaskType.AddImage:  
                     logger.error("AddImage task is not yet implemented.")
                 case common_types.TaskType.DeleteImage:
@@ -242,19 +237,19 @@ def process_message(queue: redis.Redis, message_json: str) -> None:
 def main(queue: redis.Redis) -> None:
 
     logger.info("Starting main loop")
-    while True:
-        message = queue.brpop(settings.redis_queue_name, timeout=30)  # type: ignore # Increase from 5 to 30 after redis library update from  7.4.0 to 8.0.1
-        q_len = queue.llen(settings.redis_queue_name)
-        QUEUE_LENGTH.labels(
-            app_name="huutoworker",
-            queue_name=settings.redis_queue_name
-        ).set(float(q_len))  # type: ignore
- 
-        if message is not None:
-            _, message_json = message # type: ignore
-            logger.debug(f"Raw message from queue: {message_json}") # type: ignore
-            process_message(queue, message_json) # type: ignore
-            time.sleep(1)
+    with HuutoBot() as bot:
+        while True:
+            message = queue.brpop(settings.redis_queue_name, timeout=30)  # type: ignore # Increase from 5 to 30 after redis library update from  7.4.0 to 8.0.1
+            q_len = queue.llen(settings.redis_queue_name)
+            QUEUE_LENGTH.labels(
+                app_name="huutoworker",
+                queue_name=settings.redis_queue_name
+            ).set(float(q_len))  # type: ignore
+    
+            if message is not None:
+                _, message_json = message # type: ignore
+                logger.debug(f"Raw message from queue: {message_json}") # type: ignore
+                process_message(queue, message_json, bot) # type: ignore
 
 if __name__ == "__main__":
     LoggingConfigListener.start_listener()

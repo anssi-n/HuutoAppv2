@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     logging_config_port: int
     huuto_username: str
     huuto_password: SecretStr
+    huutoapi_delay: float = 0.5
     postal_code: int
     delivery_terms: str
     payment_terms: str
@@ -32,6 +33,6 @@ class Settings(BaseSettings):
     secret_key: SecretStr
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
-    auth_cookie_secure: bool = False
+    auth_cookie_secure: bool = False  
 
 settings = Settings() # type: ignore # Loaded from .env file
