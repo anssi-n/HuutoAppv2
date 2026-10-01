@@ -90,7 +90,6 @@ class HuutoBot:
             current_delay += 0.5
         return resp
 
-    @authenticated
     def _authenticate(self) -> None:
         resp = self._execute_api_call(Method.POST, f"https://api.huuto.net/1.1/authentication?username={settings.huuto_username}&password={settings.huuto_password.get_secret_value()}")
         if resp.status_code not in (HTTPStatus.OK, HTTPStatus.CREATED):
