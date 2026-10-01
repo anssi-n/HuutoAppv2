@@ -568,6 +568,7 @@
                 statusEl.className = "";
                 statusEl.textContent = "Creating the item…";
 
+                let createdItemId = null;
                 try {
                     const res = await apiFetch("/api/v1/items", {
                         method: "POST",
@@ -578,6 +579,7 @@
                         throw new Error(errorMessage(await res.json().catch(() => null), res.status));
                     }
                     const item = await res.json();
+                    createdItemId = item.id;
 
                     for (let i = 0; i < files.length; i++) {
                         statusEl.textContent = `Uploading image ${i + 1} of ${files.length}…`;
@@ -595,7 +597,11 @@
                     window.location.href = "/";
                 } catch (err) {
                     statusEl.className = "error";
-                    statusEl.textContent = `Failed to create item: ${err.message}. Please try again.`;
+                    /* The item row is already committed by this point, so a failed
+                       image upload must not be reported as a failed creation. */
+                    statusEl.textContent = createdItemId
+                        ? `Item created, but the images could not be uploaded: ${err.message}. Add them from the modify page (item ${createdItemId}).`
+                        : `Failed to create item: ${err.message}. Please try again.`;
                     submitBtn.disabled = false;
                     submitBtn.textContent = "Create Item";
                 }

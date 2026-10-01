@@ -634,6 +634,7 @@
                 statusEl.className = "";
                 statusEl.textContent = "Saving changes…";
 
+                let itemSaved = false;
                 try {
                     const res = await apiFetch(`/api/v1/items/${itemId}`, {
                         method: "PATCH",
@@ -643,6 +644,7 @@
                     if (!res.ok) {
                         throw new Error(errorMessage(await res.json().catch(() => null), res.status));
                     }
+                    itemSaved = true;
 
                     for (const imageId of pendingRemovals) {
                         statusEl.textContent = `Removing image…`;
@@ -668,7 +670,11 @@
                     window.location.href = "/";
                 } catch (err) {
                     statusEl.className = "error";
-                    statusEl.textContent = `Failed to save changes: ${err.message}. Please try again.`;
+                    /* The field changes are already committed by this point, so a
+                       failed image step must not be reported as a failed save. */
+                    statusEl.textContent = itemSaved
+                        ? `Item saved, but the image changes failed: ${err.message}. Please try again.`
+                        : `Failed to save changes: ${err.message}. Please try again.`;
                     submitBtn.disabled = false;
                     submitBtn.textContent = "Save Changes";
                 }

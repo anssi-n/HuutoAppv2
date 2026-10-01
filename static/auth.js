@@ -59,12 +59,30 @@ function errorMessage(data, status) {
    drop the user back to the logged out state on an expired token. */
 let sessionExpiredHandler = null;
 
+/* Bodies the browser encodes itself. These must never carry a hand-set
+   Content-Type: for FormData that would drop the multipart boundary, and the
+   server would then see none of the form fields. */
+function hasBrowserManagedContentType(body) {
+    if (typeof FormData !== "undefined" && body instanceof FormData) return true;
+    if (typeof URLSearchParams !== "undefined" && body instanceof URLSearchParams) return true;
+    if (typeof Blob !== "undefined" && body instanceof Blob) return true;
+    if (typeof ArrayBuffer !== "undefined" && (body instanceof ArrayBuffer || ArrayBuffer.isView(body))) return true;
+    if (typeof ReadableStream !== "undefined" && body instanceof ReadableStream) return true;
+    return false;
+}
+
 async function apiFetch(path, options = {}) {
     const headers = new Headers(options.headers || {});
     const token = getToken();
     if (token) headers.set("Authorization", `Bearer ${token}`);
-    if (options.body !== undefined && !(options.body instanceof URLSearchParams)) {
-        headers.set("Content-Type", "application/json");
+    if (options.body !== undefined) {
+        if (hasBrowserManagedContentType(options.body)) {
+            /* Any Content-Type here is guaranteed wrong, including one the
+               caller passed in, so drop it and let the browser set it. */
+            headers.delete("Content-Type");
+        } else if (!headers.has("Content-Type")) {
+            headers.set("Content-Type", "application/json");
+        }
     }
 
     const response = await fetch(path, { ...options, headers });
