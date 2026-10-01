@@ -82,7 +82,7 @@ class HuutoBot:
         self.client.close()
         logger.info("HTTPX client closed.")
 
-    @huuto_rate_limiter
+    @huuto_rate_limiter()
     def _execute_api_call(self, method: Method, url: str, **extra_params) -> httpx.Response: 
         current_delay = 1
         while (resp := self.client.request(method, url, **extra_params)).status_code == HTTPStatus.TOO_MANY_REQUESTS:
