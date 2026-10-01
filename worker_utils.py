@@ -235,6 +235,7 @@ def generate_end_time() -> tuple[datetime, str]:
         end_time_utc = (end_time_utc.replace(day=1) + timedelta(days=32)).replace(day=1).replace(hour=12, minute=00, second=00)
         logger.info("Less than one day remaining. New end date and time increased by one month.")
 
-    end_date = f"{str(end_time_utc.year)}-{str(end_time_utc.month).zfill(2)}-{str(end_time_utc.day).zfill(2)} {str(end_time_utc.hour).zfill(2)}:{str(end_time_utc.minute).zfill(2)}:{str(end_time_utc.second).zfill(2)}"
-    logger.info(f"Ending date and time for the new item: {end_date}")
-    return end_time_utc, end_date
+    # end_datetime_huuto = f"{str(end_time_utc.year)}-{str(end_time_utc.month).zfill(2)}-{str(end_time_utc.day).zfill(2)} {str(end_time_utc.hour).zfill(2)}:{str(end_time_utc.minute).zfill(2)}:{str(end_time_utc.second).zfill(2)}"
+    end_datetime_huuto = f"{str(end_time_utc.year)}-{str(end_time_utc.month).zfill(2)}-{str(end_time_utc.day).zfill(2)} 12:00:00"
+    logger.info(f"Ending date and time for the new item: {end_datetime_huuto}")
+    return end_time_utc, end_datetime_huuto
