@@ -28,6 +28,16 @@ QUEUE_LENGTH = Gauge(
     ["app_name", "queue_name"]
 )
 
+# 2026-10-01 19:24:55 worker.py:197 INFO Valid message received: task=Task(task=<TaskType.AddImage: 'AddImage'>, log_id=3005, id=598, add_keywords=0) created_at=datetime.datetime(2026, 10, 1, 19, 10, 6, 491703, tzinfo=TzInfo(0)) retries=0
+#task   | status  |          start_time           | end_time |                        details                         |  id
+#----------+---------+-------------------------------+----------+--------------------------------------------------------+------
+#AddImage | ongoing | 2026-10-01 19:10:06.481094+00 |          | {"image_name": "3c52c1a0dc49489cbea89708de285f52.jpg"} | 3005
+@task_latency
+def add_image(_: redis.Redis, bot: HuutoBot, message: huutoapp_queue_schema.QueueMessage) -> None:
+    # Get image name from task_log details columns json -> image_name
+    # bot.add_image_to_item(huuto_id, image.filename)
+    return True
+
 @task_latency
 def relist_all_items(queue: redis.Redis, _: HuutoBot, message: huutoapp_queue_schema.QueueMessage) -> bool:
     items = get_closed_items()
@@ -213,8 +223,8 @@ def process_message(queue: redis.Redis, message_json: str, bot: HuutoBot) -> Non
                     logger.info("Processing RelistAllItems task.")
                     result = execute_task(relist_all_items, queue, bot, message)
                 case common_types.TaskType.AddImage:  
-                    logger.error("AddImage task is not yet implemented.")
-                    result = None
+                    logger.error("Processing AddImage task.")
+                    result = execute_task(add_image, queue, bot, message)
                 case common_types.TaskType.DeleteImage:
                     logger.error("DeleteImage task is not yet implemented.")
                     result = None

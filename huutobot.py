@@ -38,6 +38,7 @@ def authenticated(fn: Callable) -> Callable:
     def wrapper(self: HuutoBot, *args, **kwargs):
         if (not hasattr(self, "auth_token")) or (not self.auth_token.is_valid):
             logger.info("Authentication token does not exist or has expired. Re-authenticating.")
+            self.client.headers.pop("X-HuutoApiToken")
             self._authenticate()
         else:
             logger.info("Authentication token is still valid.")
