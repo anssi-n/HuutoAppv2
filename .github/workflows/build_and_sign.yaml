@@ -37,10 +37,44 @@ jobs:
                       ${{ secrets.DOCKERHUB_USERNAME }}/huutoapi:${{ github.ref_name }}
                       ${{ secrets.DOCKERHUB_USERNAME }}/huutoapi:latest
 
-            - name: Sign HuutoApi Image
+            - name: Generate SBOM for HuutoApi
+              uses: aquasecurity/trivy-action@master
+              with:
+                  image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/huutoapi@${{ steps.docker_build_huutoapi.outputs.digest }}
+                  format: "cyclonedx"
+                  output: "sbom.json"
+
+            - name: Generate cosign vulnerability scan for HuutoApi
+              uses: aquasecurity/trivy-action@master
+              with:
+                  image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/huutoapi@${{ steps.docker_build_huutoapi.outputs.digest }}
+                  format: "cosign-vuln"
+                  output: "vuln.json"
+
+            - name: Sign HuutoApi image
               run: |
                   cosign sign --key env://COSIGN_PRIVATE_KEY \
                       ${{ secrets.DOCKERHUB_USERNAME }}/huutoapi@${{ steps.docker_build_huutoapi.outputs.digest }} --yes
+              env:
+                  COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+                  COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+
+            - name: Attest HuutoApi SBOM
+              run: |
+                  cosign attest --key env://COSIGN_PRIVATE_KEY \
+                          --type cyclonedx \
+                          --predicate sbom.json \
+                          ${{ secrets.DOCKERHUB_USERNAME }}/huutoapi@${{ steps.docker_build_huutoapi.outputs.digest }}
+              env:
+                  COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+                  COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+
+            - name: Attest HuutoApi vulnerability scan
+              run: |
+                  cosign attest --key env://COSIGN_PRIVATE_KEY \
+                          --type vuln \
+                          --predicate vuln.json \
+                          ${{ secrets.DOCKERHUB_USERNAME }}/huutoapi@${{ steps.docker_build_huutoapi.outputs.digest }}
               env:
                   COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
                   COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
@@ -56,10 +90,44 @@ jobs:
                       ${{ secrets.DOCKERHUB_USERNAME }}/huutoworker:${{ github.ref_name }}
                       ${{ secrets.DOCKERHUB_USERNAME }}/huutoworker:latest
 
-            - name: Sign HuutoWorker Image
+            - name: Generate SBOM for HuutoWorker
+              uses: aquasecurity/trivy-action@master
+              with:
+                  image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/huutoworker@${{ steps.docker_build_huutoworker.outputs.digest }}
+                  format: "cyclonedx"
+                  output: "sbom.json"
+
+            - name: Generate cosign vulnerability scan for HuutoWorker
+              uses: aquasecurity/trivy-action@master
+              with:
+                  image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/huutoworker@${{ steps.docker_build_huutoworker.outputs.digest }}
+                  format: "cosign-vuln"
+                  output: "vuln.json"
+
+            - name: Sign HuutoWorker image
               run: |
                   cosign sign --key env://COSIGN_PRIVATE_KEY \
                       ${{ secrets.DOCKERHUB_USERNAME }}/huutoworker@${{ steps.docker_build_huutoworker.outputs.digest }} --yes
+              env:
+                  COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+                  COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+
+            - name: Attest HuutoWorker SBOM
+              run: |
+                  cosign attest --key env://COSIGN_PRIVATE_KEY \
+                          --type cyclonedx \
+                          --predicate sbom.json \
+                          ${{ secrets.DOCKERHUB_USERNAME }}/huutoworker@${{ steps.docker_build_huutoworker.outputs.digest }}
+              env:
+                  COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+                  COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+
+            - name: Attest HuutoWorker vulnerability scan
+              run: |
+                  cosign attest --key env://COSIGN_PRIVATE_KEY \
+                          --type vuln \
+                          --predicate vuln.json \
+                          ${{ secrets.DOCKERHUB_USERNAME }}/huutoworker@${{ steps.docker_build_huutoworker.outputs.digest }}
               env:
                   COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
                   COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}

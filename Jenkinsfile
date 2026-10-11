@@ -31,9 +31,22 @@ spec:
     - name: harbor-ca
       mountPath: /kaniko/ssl/certs/additional-ca-cert-bundle.crt
       subPath: additional-ca-cert-bundle.crt
+
+  - name: trivy
+    image: aquasec/trivy:latest
+    command: ["cat"]
+    tty: true
+    workingDir: /home/jenkins/agent
+    volumeMounts:
+    - name: docker-config
+      mountPath: /docker-config
+    - name: harbor-ca
+      mountPath: /etc/ssl/certs/additional-ca-cert-bundle.crt
+      subPath: additional-ca-cert-bundle.crt
+
   - name: cosign
     #image: cgr.dev/chainguard/cosign:latest-dev
-    image: ghcr.io/sigstore/cosign/cosign:v3.0.5-dev
+    image: ghcr.io/sigstore/cosign/cosign:v3.1.3-dev
     command:
     - "cat"
     tty: true
