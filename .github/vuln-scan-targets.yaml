@@ -1,0 +1,4 @@
+tag: latest
+images:
+  - docker.io/bobfleming/huutoapi
+  - docker.io/bobfleming/huutoworker

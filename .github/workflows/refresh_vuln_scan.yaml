@@ -1,0 +1,98 @@
+name: Refresh vuln scan attestations
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: refresh-vuln-scan
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  targets:
+    runs-on: ubuntu-latest
+    outputs:
+      images: ${{ steps.read.outputs.images }}
+      tag: ${{ steps.read.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install yq
+        run: |
+          sudo curl -sSL https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -o /usr/local/bin/yq
+          sudo chmod +x /usr/local/bin/yq
+      - name: Read targets
+        id: read
+        run: |
+          echo "images=$(yq -o=json -I=0 '.images' .github/vuln-scan-targets.yaml)" >> "$GITHUB_OUTPUT"
+          echo "tag=$(yq -r '.tag' .github/vuln-scan-targets.yaml)" >> "$GITHUB_OUTPUT"
+
+  refresh:
+    needs: targets
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ${{ fromJson(needs.targets.outputs.images) }}
+    env:
+      TAG: ${{ needs.targets.outputs.tag }}
+      IMAGE: ${{ matrix.image }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3.5.0
+
+      - name: Install regctl
+        run: |
+          curl -sSL https://github.com/regclient/regclient/releases/latest/download/regctl-linux-amd64 -o regctl
+          chmod +x regctl && sudo mv regctl /usr/local/bin/regctl
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Resolve image digest
+        id: digest
+        run: |
+          DIGEST="$(regctl manifest head "${IMAGE}:${TAG}")"
+          echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
+          echo "${IMAGE}:${TAG} -> ${DIGEST}"
+
+      - name: Generate cosign vulnerability scan
+        uses: aquasecurity/trivy-action@master
+        env:
+          TRIVY_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          TRIVY_PASSWORD: ${{ secrets.DOCKERHUB_TOKEN }}
+        with:
+          image-ref: ${{ matrix.image }}@${{ steps.digest.outputs.digest }}
+          format: "cosign-vuln"
+          output: "vuln.json"
+
+      - name: Replace vulnerability attestation
+        env:
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+        run: |
+          cosign attest --key env://COSIGN_PRIVATE_KEY \
+            --replace \
+            --type vuln \
+            --predicate vuln.json \
+            "${IMAGE}@${{ steps.digest.outputs.digest }}" --yes
+
+      - name: Derive cosign public key
+        env:
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+        run: cosign public-key --key env://COSIGN_PRIVATE_KEY > cosign.pub
+
+      - name: Verify vuln attestation
+        run: cosign verify-attestation --key cosign.pub --type vuln "${IMAGE}:${TAG}"
+
+      - name: Verify SBOM attestation preserved
+        run: cosign verify-attestation --key cosign.pub --type cyclonedx "${IMAGE}:${TAG}"
