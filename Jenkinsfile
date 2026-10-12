@@ -14,7 +14,6 @@ spec:
   serviceAccountName: jenkins-agent
   nodeSelector:
     jenkins-agent: true
-spec:
   containers:
   - name: kaniko
     image: registry.gitlab.com/gitlab-ci-utils/container-images/kaniko:debug
