@@ -8,8 +8,11 @@ from typing import Self
 from config import settings
 from functools import wraps
 from typing import Callable
-from image_utils import IMAGE_DIR
 from enum import StrEnum
+from pathlib import Path
+from config import settings
+
+IMAGE_DIR=Path(settings.image_dir)
 
 class Method(StrEnum):
     GET = "GET"

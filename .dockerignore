@@ -5,6 +5,7 @@ dist/
 wheels/
 *.egg-info
 .venv
+.mypy_cache
 .git
 .env
 import_items.py
@@ -16,3 +17,5 @@ media/images
 AGENTS.md
 update_creds.sh
 sync-db.py
+username
+password

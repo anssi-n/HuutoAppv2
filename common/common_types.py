@@ -1,4 +1,8 @@
 from enum import StrEnum
+from typing import Literal
+
+ImageType = Literal["fullsize", "preview"]
+ImagePhase = Literal["initial", "update"]
 
 class UserRole(StrEnum):
     user = "user"

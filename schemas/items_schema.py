@@ -1,7 +1,7 @@
 from datetime import datetime, UTC
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 import re
-from image_utils import ImageType
+from common import common_types
 
 class Title(BaseModel):
     title: list[str | int] = Field(min_length=16, max_length=16)
@@ -219,7 +219,7 @@ class ImageResponse(BaseModel):
 
     id: int
     filename: str
-    file_type: ImageType
+    file_type: common_types.ImageType
     huuto_image_id: int | None
 
 class ItemResponse(BaseModel):

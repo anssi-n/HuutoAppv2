@@ -2,12 +2,10 @@ import uuid
 from io import BytesIO
 from pathlib import Path
 from PIL import Image, ImageOps
-from typing import Literal 
+from common import common_types
+from config import settings
 
-ImageType = Literal["fullsize", "preview"]
-ImagePhase = Literal["initial", "update"]
-
-IMAGE_DIR = Path("media/images")
+IMAGE_DIR=Path(settings.image_dir)
 
 def generate_preview(image_name: str) -> str:
     with Image.open(IMAGE_DIR / image_name) as fullsize:
@@ -20,7 +18,7 @@ def generate_preview(image_name: str) -> str:
         img_preview.save(preview_filepath, "JPEG", quality=85, optimize=True)
     return preview_filename
 
-def process_image(image_type: ImageType, content: bytes, *, keep_filename: bool = False, original_filename: str | None = None) -> list[str | None]:
+def process_image(image_type: common_types.ImageType, content: bytes, *, keep_filename: bool = False, original_filename: str | None = None) -> list[str | None]:
 
     IMAGE_DIR.mkdir(parents=True, exist_ok=True)
 

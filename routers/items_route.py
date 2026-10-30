@@ -17,7 +17,7 @@ from schemas import items_schema, huutoapp_queue_schema
 from db import get_db
 from redis_queue import get_redis
 from PIL import UnidentifiedImageError
-from image_utils import delete_image, process_image, generate_preview, ImageType, ImagePhase, IMAGE_DIR
+from image_utils import delete_image, process_image, generate_preview, IMAGE_DIR
 from config import settings
 from item_config import get_item_config
 from logger import logger
@@ -561,8 +561,8 @@ async def delete_item(db: Annotated[AsyncSession, Depends(get_db)],
 async def add_item_image(
     item_id: int,
     image: UploadFile,
-    image_type: Annotated[ImageType, Form()],
-    phase: Annotated[ImagePhase, Form()],
+    image_type: Annotated[common_types.ImageType, Form()],
+    phase: Annotated[common_types.ImagePhase, Form()],
     db: Annotated[AsyncSession, Depends(get_db)],
     redis: Annotated[Redis, Depends(get_redis)],
     _current_user: AdminUser):

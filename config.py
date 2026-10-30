@@ -34,5 +34,6 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     auth_cookie_secure: bool = False  
+    image_dir: str = "media/images"
 
 settings = Settings() # type: ignore # Loaded from .env file
