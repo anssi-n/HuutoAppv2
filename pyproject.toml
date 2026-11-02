@@ -11,6 +11,7 @@ dependencies = [
     "psycopg[binary,pool]>=3.3.6",
     "pydantic-settings>=2.14.2",
     "sqlalchemy>=2.0.51",
+    "redis>=8.0.1",
 ]
 
 [project.optional-dependencies]
@@ -19,11 +20,9 @@ huutoapi = [
     "pillow>=13.0.0",
     "pwdlib[argon2]>=0.3.1",
     "pyjwt>=2.15.0",
-    "redis>=8.0.1",
 ]
 huutoworker = [
     "httpx>=0.28.1",
-    "redis>=8.0.1",
     "starlette>=1.3.1",
 ]
 huutomcp = [

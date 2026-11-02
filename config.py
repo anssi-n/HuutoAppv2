@@ -6,8 +6,8 @@ class Settings(BaseSettings):
                                         env_file_encoding="utf-8",
                                         case_sensitive=False)
 
-    database_user: SecretStr
-    database_password: SecretStr
+    database_user: SecretStr | None = None
+    database_password: SecretStr | None = None
     database_host: str
     database_port: int
     database_name: str
@@ -17,23 +17,24 @@ class Settings(BaseSettings):
     redis_db_number: int
     redis_password: SecretStr 
     redis_queue_name: str
-    max_image_size: int
-    favicon_file: str
-    logging_config_host: str
-    logging_config_port: int
-    huuto_username: str
-    huuto_password: SecretStr
-    huutoapi_delay: float = 0.5
-    postal_code: int
-    delivery_terms: str
-    payment_terms: str
-    max_retries: int
-    omdb_api_key: SecretStr
-    worker_prometheus_port: int
-    secret_key: SecretStr
-    algorithm: str = "HS256"
-    access_token_expire_minutes: int = 30
-    auth_cookie_secure: bool = False  
-    image_dir: str = "media/images"
+    max_image_size: int | None = None
+    favicon_file: str | None = None
+    logging_config_host: str | None = None
+    logging_config_port: int | None = None
+    huuto_username: str | None = None
+    huuto_password: SecretStr | None = None
+    huuto_user_id: int | None = None
+    huutoapi_delay: float | None = 0.5
+    postal_code: int | None = None
+    delivery_terms: str | None = None
+    payment_terms: str | None = None
+    max_retries: int | None = None
+    omdb_api_key: SecretStr | None = None
+    worker_prometheus_port: int | None = None
+    secret_key: SecretStr | None = None
+    algorithm: str | None = "HS256"
+    access_token_expire_minutes: int | None = 30
+    auth_cookie_secure: bool | None = False  
+    image_dir: str | None = "media/images"
 
 settings = Settings() # type: ignore # Loaded from .env file

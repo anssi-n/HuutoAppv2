@@ -176,81 +176,24 @@ class HuutoBot:
         logger.info(f"Image {image_id} deleted from item {item_id} successfully.")
         return True
 
+    @authenticated
+    def add_watchlist_item(self, item_id: int) -> bool:
+        resp = self._execute_api_call("POST",f"https://api.huuto.net/1.1/users/{settings.huuto_user_id}/favorites", json={"itemid": item_id})
 
-# closed_item = 640794800
-# with HuutoBot() as bot:
-#     relist = {"original_id":closed_item}
-#     item = HuutoItem(original_id=closed_item)
-#     new_item_id = bot.add_item(item)
-#     print(new_item_id)
-#     #relisted item now in draft state
-#     #edit new closing time
-#     closing_time = {
-#         "closingTime": "2026-04-22 12:00:00",
-#         "paymentTerms": "Tilisiirto, MobilePay tai käteinen",
-#     }
-#     if new_item_id:
-#         ok = bot.edit_item(new_item_id, HuutoItem(**closing_time))
-#         print(ok)
+        if resp.status_code != HTTPStatus.CREATED:
+            logger.error(f"Adding item {item_id} to watchlist failed with status code {resp.status_code}: {resp.json()}")
+            return False
 
-#     # change item status -> preview -> published
-#     if ok:
-#         ok = bot.edit_item(new_item_id, HuutoItem(status=Status.PREVIEW))
-#         print(ok)
+        logger.info(f"Item {item_id} added successfully to watchlist.")
+        return True
 
-#     if ok:
-#         ok = bot.edit_item(new_item_id, HuutoItem(status=Status.PUBLISHED))
-#         print(ok)
+    @authenticated
+    def delete_watchlist_item(self, item_id: int) -> bool:
+        resp = self._execute_api_call("DELETE",f"https://api.huuto.net/1.1/users/{settings.huuto_user_id}/favorites/{item_id}")
 
+        if resp.status_code not in (HTTPStatus.NO_CONTENT, HTTPStatus.FORBIDDEN):
+            logger.error(f"Deleting item {item_id} from watchlist failed with status code {resp.status_code}: {resp.json()}")
+            return False
 
-
-# with HuutoBot() as bot:
-#     item = HuutoItem(**new_item)
-#     item_id = bot.add_item(item)
-#     print(item_id)
-#     images = ["IMG_20260326_200904_resized.jpg"]
-#     for image in images:
-#         image_id = bot.add_image_to_item(item_id, image)
-#         print(image, image_id)
-#     ok = bot.set_item_status(item_id,Status.PUBLISHED)
-#     print(ok)
-
-# import json
-# target_categories = ("DVD","Blu-ray","4K Ultra HD")
-# result = {}
-# with open("categories.json","r",encoding="utf-8") as file:
-#     categories = json.loads(file.read())
-#     for category in categories["categories"]:
-#         if category["title"] == "Elokuvat":
-#             for subcategory in category["subcategories"]:
-#                 if subcategory["title"] in target_categories:
-# #                    result[subcategory["title"]]=[]
-#                     result[subcategory["title"]]={}
-#                     for cat in subcategory["subcategories"]:
-#                         # result[subcategory["title"]].append((cat["title"],cat["id"]))
-#                         result[subcategory["title"]][cat["title"]]=cat["id"]
-# print(result)
-# with open("movie_categories.json","w",encoding="utf-8") as file:
-#     json.dump(result, file)
-
-# from DatabaseConnection import DatabaseConnection
-# import json
-# # categories = {}
-# # with open("movie_categories.json","r",encoding="utf-8") as file:
-# #     categories = json.loads(file.read())
-# # print(categories)
-# with DatabaseConnection(localhost=True) as (db_conn, cursor):
-#     formats = {}
-#     query = "SELECT * FROM media_categories"
-#     cursor.execute(query)
-#     #, (self.title, self.images, self.price, self.slipcover, self.description,
-#     #                             self.format, self.condition, self.shipping, self.region, self.genre, self.subtitles, self.country, self.packaging, self.discount_info))
-#     #        db_conn.commit()
-#     for row in cursor.fetchall():
-#         formats[row[0]] = row[1]
-#     print(formats)
-#     for id, label in formats.items():
-#         print(label, id)
-#         query = "INSERT INTO genres (id, label) VALUES (%s, %s)"
-#         cursor.execute(query, (id, label))
-#         db_conn.commit()
+        logger.info(f"Item {item_id} deleted successfully from watchlist.")
+        return True

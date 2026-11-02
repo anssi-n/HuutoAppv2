@@ -82,11 +82,13 @@ def relist_item(_: redis.Redis, bot: HuutoBot, message: huutoapp_queue_schema.Qu
     parent_id, last_item, parent_log_id = get_parent_id(message.task.log_id)
 
     try:
+        bot.delete_watchlist_item(item.huuto_id)
         closing_time_datetime, closing_time_str = generate_end_time()
         new_huuto_id = bot.add_item(huutonet_schema.HuutoItem(original_id=item.huuto_id))
         bot.edit_item(new_huuto_id, huutonet_schema.HuutoItem(closing_time=closing_time_str, description=full_item_description))
         bot.edit_item(new_huuto_id, huutonet_schema.HuutoItem(status=huutonet_schema.Status.PREVIEW))
         bot.edit_item(new_huuto_id, huutonet_schema.HuutoItem(status=huutonet_schema.Status.PUBLISHED))
+        bot.add_watchlist_item(new_huuto_id)
         item = save_item(item.id, huuto_id=new_huuto_id, end_time=closing_time_datetime)
     except (HuutoAuthenticationFailed, HuutoItemError) as err:
         if parent_id is not None:
@@ -104,6 +106,7 @@ def relist_item(_: redis.Redis, bot: HuutoBot, message: huutoapp_queue_schema.Qu
 @task_latency
 def close_item(_: redis.Redis, bot: HuutoBot, message: huutoapp_queue_schema.QueueMessage) -> None:
     bot.edit_item(message.task.id, huutonet_schema.HuutoItem(status=huutonet_schema.Status.CLOSED))
+    bot.delete_watchlist_item(message.task.id)
     details = {"details": {"retries": {f"{message.retries}": {"status": common_types.TaskStatus.success, "huuto_item": message.task.id}}}}
     update_status(message.task.log_id, common_types.TaskStatus.success, end_time=datetime.datetime.now(), details=details)
     
@@ -138,6 +141,7 @@ def add_item(_: redis.Redis, bot: HuutoBot, message: huutoapp_queue_schema.Queue
         delivery_terms = settings.delivery_terms)
 
     huuto_id = bot.add_item(huuto_item)
+    bot.add_watchlist_item(huuto_id)
     images = { image.id: bot.add_image_to_item(huuto_id, image.filename) for image in item.images if image.file_type == "fullsize"}
     print(images)
     bot.edit_item(huuto_id, huutonet_schema.HuutoItem(status=huutonet_schema.Status.PUBLISHED))
