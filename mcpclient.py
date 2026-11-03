@@ -1,27 +1,46 @@
-import asyncio
 from fastmcp import Client
+import asyncio
+import httpx
 
-# Määritä etäpalvelimen URL (korvaa IP ja portti omillasi).
-# Huom: FastMCP:n HTTP-palvelin käyttää tyypillisesti /mcp päätepistettä.
-REMOTE_SERVER_URL = "http://localhost:8000/mcp"
-EXPECTED_TOKEN = "my-super-secret-api-key"
+CLIENT_ID = "mcp:huutoapp:admin"
+CLIENT_SECRET = "pXLst78mfNyFBMKLDd1VnBv5jq9sBRES"
+SCOPES = ["mcp:huutoapp:public", "mcp:huutoapp:admin"]
+# CLIENT_ID = "mcp:huutoapp:public"
+# CLIENT_SECRET = "2r1MWyrp8H8mQl0EjNgL0gL32GnYqLaY"
+# SCOPES = ["mcp:huutoapp:public"]
+
+def get_jwt(client_id: str, client_secret: str, scopes: list[str]) -> str:
+
+    with httpx.Client() as client:
+        url = "https://keycloak.anyman.homelab:8443/realms/homelab/protocol/openid-connect/token"
+        payload = {
+            "grant_type": "client_credentials",
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "scope": " ".join(scopes)
+        }
+        response = httpx.post(url, data=payload, verify=False)
+        token_data = response.json()
+
+        if response.status_code != 200:
+            return ""        
+
+        jwt_token = token_data.get("access_token")
+        print(f"Token: {jwt_token}")
+        return jwt_token
+
+
 
 async def main():
-    # Luodaan asiakasinstanssi osoitteella
-    client = Client(REMOTE_SERVER_URL, auth=EXPECTED_TOKEN)
-    
-    # Yhteys täytyy avata asynkronisella kontekstinhallinnalla (async with)
-    async with client:
-        print("Yhteys muodostettu etäpalvelimeen!")
-        
-        # 1. Listataan kaikki palvelimen tarjoamat työkalut
-        tools = await client.list_tools()
-        print(f"Löydetyt työkalut: {[t.name for t in tools]}")
 
-        # 2. Kutsutaan jotain palvelimen työkalua (esimerkkinä aiempi 'public'-työkalu)
-        for t in tools:
-            result = await client.call_tool(t.name, {"user": "Anssi"})
-            print(f"Työkalun vastaus: {result}")
+    if jwt := get_jwt(CLIENT_ID, CLIENT_SECRET, SCOPES):
+        async with Client("http://localhost:8000/mcp", auth=jwt) as client:
+            tools = await client.list_tools()
+            print(f"Tools: {[t.name for t in tools]}")
+
+            for t in tools:
+                result = await client.call_tool(t.name, {"user": "Anssi"})
+                print(f"Tool {t.name} result: {result}")
 
 if __name__ == "__main__":
     asyncio.run(main())

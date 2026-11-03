@@ -1,28 +1,17 @@
-from fastmcp import FastMCP # type: ignore
-from huutomcp import tools
-from logger import logger
+import os
 from db import engine
-from fastmcp.server.auth import TokenVerifier
-from fastmcp.server.auth.auth import AccessToken
+from fastmcp import FastMCP
 from fastmcp.server.auth import require_scopes
-import secrets
+from fastmcp.server.auth.providers.jwt import JWTVerifier
+from config import settings
 
-EXPECTED_TOKEN = "my-super-secret-api-key"
-
-# In keycloak admin gets both public and admin scsopes. Normal user get only public scope
-class StaticTokenVerifier(TokenVerifier):    
-    async def verify_token(self, token: str) -> AccessToken | None:
-        
-        if secrets.compare_digest(token, EXPECTED_TOKEN):
-            return AccessToken(
-                token=token,
-                client_id="static-client",
-                scopes=["public", "admin"],
-#                scopes=["public"]
-            )
-        return None
-
-mcp = FastMCP("HuutoApp MCP Server", auth=StaticTokenVerifier())
+verifier = JWTVerifier(
+    jwks_uri=f"{settings.huutoapp_mcp_idp_url}/realms/{settings.huutoapp_mcp_idp_realm}/protocol/openid-connect/certs",
+    issuer=f"{settings.huutoapp_mcp_idp_url}/realms/{settings.huutoapp_mcp_idp_realm}",
+    audience=settings.huutoapp_mcp_idp_audience
+)
+   
+mcp = FastMCP("HuutoApp MCP Server", auth=verifier)
 
 @mcp.lifespan()
 async def app_lifespan():
@@ -31,12 +20,13 @@ async def app_lifespan():
     finally:
         await engine.dispose()
 
-@mcp.tool(auth=require_scopes("public"))
+@mcp.tool(auth=require_scopes("mcp:huutoapp:public"))
 async def public(user: str) -> dict[str,str]:
     """Public greeting """
     return {"public_greeting": f"Hello {user}"}
 
-@mcp.tool(auth=require_scopes("admin"))
+@mcp.tool(auth=require_scopes("mcp:huutoapp:admin"))
 async def admin(user: str) -> dict[str,str]:
     """Admin greeting """
     return {"admin_greeting": f"Hello {user}"}
+

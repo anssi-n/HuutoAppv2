@@ -36,5 +36,8 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int | None = 30
     auth_cookie_secure: bool | None = False  
     image_dir: str | None = "media/images"
+    huutoapp_mcp_idp_url: str | None = None
+    huutoapp_mcp_idp_realm: str | None = None
+    huutoapp_mcp_idp_audience: str | None = None
 
 settings = Settings() # type: ignore # Loaded from .env file
