@@ -1,4 +1,5 @@
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from contextlib import asynccontextmanager
 from sqlalchemy import Integer, create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 import psycopg
@@ -58,3 +59,12 @@ sync_engine = create_engine(
 async def get_db() -> AsyncGenerator[AsyncSession]:
     async with AsyncSessionLocal() as db:
         yield db
+
+@asynccontextmanager
+async def get_fastmcp_db() -> AsyncGenerator[AsyncSession, None]:
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+        except Exception:
+            await session.rollback()
+            raise

@@ -1,10 +1,11 @@
-from pydantic import SecretStr
+from pydantic import SecretStr, HttpUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", 
                                         env_file_encoding="utf-8",
-                                        case_sensitive=False)
+                                        case_sensitive=False,
+                                        url_preserve_empty_path=True)
 
     database_user: SecretStr | None = None
     database_password: SecretStr | None = None
@@ -36,8 +37,10 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int | None = 30
     auth_cookie_secure: bool | None = False  
     image_dir: str | None = "media/images"
-    huutoapp_mcp_idp_url: str | None = None
+    huutoapp_mcp_idp_url: HttpUrl | None = None
     huutoapp_mcp_idp_realm: str | None = None
     huutoapp_mcp_idp_audience: str | None = None
+    huutoapp_mcp_server_url: HttpUrl | None = None
+    huutoapp_mcp_tool_docs_path: str | None = None
 
 settings = Settings() # type: ignore # Loaded from .env file

@@ -71,7 +71,7 @@ async def fetch_items(db: AsyncSession,
         count_stm = count_stm.where(items_model.HuutoItem.genre_id == genre_id)
     if condition_id is not None:
         count_stm = count_stm.where(items_model.HuutoItem.condition_id == condition_id)
-    now = datetime.now(UTC)
+    now = datetime.now(HELSINKI).astimezone(UTC)
     if status == "draft":
         count_stm = count_stm.where(or_(
             items_model.HuutoItem.huuto_id.is_(None),

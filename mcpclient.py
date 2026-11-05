@@ -1,6 +1,6 @@
 from fastmcp import Client
 import asyncio
-import httpx
+import httpx2 as httpx
 
 CLIENT_ID = "mcp:huutoapp:admin"
 CLIENT_SECRET = "pXLst78mfNyFBMKLDd1VnBv5jq9sBRES"
@@ -39,8 +39,15 @@ async def main():
             print(f"Tools: {[t.name for t in tools]}")
 
             for t in tools:
-                result = await client.call_tool(t.name, {"user": "Anssi"})
-                print(f"Tool {t.name} result: {result}")
+                print(t)
+                print(t.name)
+                print(t.description)
+
+            result = await client.call_tool("list_titles", {"condition": "like-new", "status": "open"})
+            print(f"Tool list_titles result: {result}")
+
+            # result = await client.call_tool("search_titles", {"search_criteria": "Bronson"})
+            # print(f"Tool search_titles result: {result}")
 
 if __name__ == "__main__":
     asyncio.run(main())

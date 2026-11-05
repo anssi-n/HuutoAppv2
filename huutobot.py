@@ -1,4 +1,4 @@
-import httpx
+import httpx2 as httpx
 from http import HTTPStatus
 import time
 from schemas import huutonet_schema

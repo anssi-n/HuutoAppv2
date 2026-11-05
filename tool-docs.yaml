@@ -1,0 +1,47 @@
+literals:
+  media_format:
+    - "DVD"
+    - "Blu-ray"
+    - "4K Ultra HD"
+  condition:
+    - "new"
+    - "like-new"
+    - "good"
+    - "acceptable"
+    - "weak"
+  status:
+    - "draft"
+    - "closed"
+    - "open"
+
+tools:
+  list_titles:
+    description: >
+      List physical media items currently for sale. Supports optional independent filters for media format, condition, and listing status. 
+      Omitting a filter returns items unrestricted on that field.
+      Filters are combined with AND logic and that omitted filters mean there's no restriction on that field.
+    parameters:
+      media_format: >
+        Optional filter by physical media format.
+        Accepted values (exact match): DVD, Blu-ray, 4K Ultra HD.
+      condition: >
+        Optional filter by item condition.
+        Accepted values (exact match): new, like-new, good, acceptable, weak.
+      status: >
+        Optional filter by listing status.
+        Accepted values (exact match): draft, closed, open.
+
+  search_titles:
+    description: >
+      Search items currently for sale using a simple keyword query.
+
+      Use this tool when the user provides a free-text or keyword search
+      (e.g. movie title, cast or crew member, genre, year, or physical media label).
+
+      Prefer this tool over more structured filters when the user does not
+      specify exact field values.
+    parameters:
+      search_criteria: >
+        Keyword or free-text search query. Matched against title, description, keywords, cast and crew, genre, 
+        release year and physical media labels.
+        Examples: 'charles bronson', '1974', 'film-noir', 'criterion'.

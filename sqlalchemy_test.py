@@ -2,7 +2,7 @@ from db import sync_engine
 from schemas import huutoapp_queue_schema
 from common import common_types
 from typing import Sequence
-import httpx
+import httpx2 as httpx
 import re
 import json
 from typing import Any

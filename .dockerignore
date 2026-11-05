@@ -26,3 +26,4 @@ update_creds.sh
 sync-db.py
 username
 password
+tool-docs.yaml
