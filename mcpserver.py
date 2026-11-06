@@ -5,7 +5,7 @@ from typing import Annotated, Literal, Optional
 from datetime import datetime, UTC
 from zoneinfo import ZoneInfo
 from pydantic import Field, AnyHttpUrl
-from sqlalchemy import select, func, desc, and_, or_
+from sqlalchemy import select, func, desc, and_, or_, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from fastmcp import FastMCP
@@ -13,6 +13,8 @@ from fastmcp.dependencies import Depends
 from fastmcp.server.auth import require_scopes
 from fastmcp.server.auth.providers.jwt import JWTVerifier
 from fastmcp.server.auth import RemoteAuthProvider
+from starlette.requests import Request
+from starlette.responses import JSONResponse, PlainTextResponse
 from config import settings
 from logger import logger
 from mcp_utils import get_doc, get_literal
@@ -127,3 +129,24 @@ async def search_titles(search_criteria: Annotated[str,
     items = [items_schema.ItemResponse.model_validate(item) for item in result.scalars().all()]
     return items
 
+@mcp.custom_route("/health", methods=["GET"]) 
+async def liveness(_: Request) -> PlainTextResponse:
+    return PlainTextResponse("OK", status_code=200)
+
+@mcp.custom_route("/ready", methods=["GET"])
+async def readiness(_: Request) -> JSONResponse:
+    try:
+        async with get_fastmcp_db() as db:
+            result = await db.execute(text("SELECT 1"))
+            if result.scalar_one_or_none() != 1:
+                return JSONResponse(
+                    {"status": "not_ready"},
+                    status_code=503
+                )
+    except Exception as err:
+        print(err)
+        return JSONResponse(
+            {"status": "not_ready"},
+            status_code=503
+        )
+    return JSONResponse({"status": "ready"}, status_code=200)
