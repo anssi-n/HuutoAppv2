@@ -112,6 +112,14 @@ spec:
                         imageTag: env.IMAGE_TAG,
                         isRelease: env.IS_RELEASE
                     )
+
+                    buildAndSignImage(
+                        registry: env.REGISTRY,
+                        imageName: "huutoapp/huutomcp",
+                        dockerfile: "Dockerfile.huutomcp",
+                        imageTag: env.IMAGE_TAG,
+                        isRelease: env.IS_RELEASE
+                    )
                 }
             }
         }

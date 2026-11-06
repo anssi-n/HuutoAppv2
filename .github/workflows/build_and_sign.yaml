@@ -131,3 +131,56 @@ jobs:
               env:
                   COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
                   COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+
+            - name: Build and Push HuutoMCP
+              id: docker_build_huutomcp
+              uses: docker/build-push-action@v6
+              with:
+                  context: .
+                  file: ./Dockerfile.huutomcp
+                  push: true
+                  tags: |
+                      ${{ secrets.DOCKERHUB_USERNAME }}/huutomcp:${{ github.ref_name }}
+                      ${{ secrets.DOCKERHUB_USERNAME }}/huutomcp:latest
+
+            - name: Generate SBOM for HuutoMCP
+              uses: aquasecurity/trivy-action@master
+              with:
+                  image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/huutomcp@${{ steps.docker_build_huutomcp.outputs.digest }}
+                  format: "cyclonedx"
+                  output: "sbom.json"
+
+            - name: Generate cosign vulnerability scan for HuutoMCP
+              uses: aquasecurity/trivy-action@master
+              with:
+                  image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/huutomcp@${{ steps.docker_build_huutomcp.outputs.digest }}
+                  format: "cosign-vuln"
+                  output: "vuln.json"
+
+            - name: Sign HuutoMCP image
+              run: |
+                  cosign sign --key env://COSIGN_PRIVATE_KEY \
+                      ${{ secrets.DOCKERHUB_USERNAME }}/huutomcp@${{ steps.docker_build_huutomcp.outputs.digest }} --yes
+              env:
+                  COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+                  COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+
+            - name: Attest HuutoMCP SBOM
+              run: |
+                  cosign attest --key env://COSIGN_PRIVATE_KEY \
+                          --type cyclonedx \
+                          --predicate sbom.json \
+                          ${{ secrets.DOCKERHUB_USERNAME }}/huutomcp@${{ steps.docker_build_huutomcp.outputs.digest }} --yes
+              env:
+                  COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+                  COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+
+            - name: Attest HuutoMCP vulnerability scan
+              run: |
+                  cosign attest --key env://COSIGN_PRIVATE_KEY \
+                          --type vuln \
+                          --predicate vuln.json \
+                          ${{ secrets.DOCKERHUB_USERNAME }}/huutomcp@${{ steps.docker_build_huutomcp.outputs.digest }} --yes
+              env:
+                  COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+                  COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}

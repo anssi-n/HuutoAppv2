@@ -1,13 +1,11 @@
 from fastmcp import Client
 import asyncio
 import httpx2 as httpx
+import os
 
 CLIENT_ID = "mcp:huutoapp:admin"
-CLIENT_SECRET = "pXLst78mfNyFBMKLDd1VnBv5jq9sBRES"
+CLIENT_SECRET = os.environ.get("CLIENT_SECRET")
 SCOPES = ["mcp:huutoapp:public", "mcp:huutoapp:admin"]
-# CLIENT_ID = "mcp:huutoapp:public"
-# CLIENT_SECRET = "2r1MWyrp8H8mQl0EjNgL0gL32GnYqLaY"
-# SCOPES = ["mcp:huutoapp:public"]
 
 def get_jwt(client_id: str, client_secret: str, scopes: list[str]) -> str:
 
@@ -39,15 +37,15 @@ async def main():
             print(f"Tools: {[t.name for t in tools]}")
 
             for t in tools:
-                print(t)
+                print(t) 
                 print(t.name)
                 print(t.description)
 
             result = await client.call_tool("list_titles", {"condition": "like-new", "status": "open"})
             print(f"Tool list_titles result: {result}")
 
-            # result = await client.call_tool("search_titles", {"search_criteria": "Bronson"})
-            # print(f"Tool search_titles result: {result}")
+            result = await client.call_tool("search_titles", {"search_criteria": "Bronson"})
+            print(f"Tool search_titles result: {result}")
 
 if __name__ == "__main__":
     asyncio.run(main())

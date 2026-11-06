@@ -59,7 +59,7 @@ async def list_titles(*,
                       condition: Annotated[Optional[Condition], Field(                 # pyright: ignore[reportInvalidTypeForm]
                           description=get_doc("list_titles", param="condition")
                       )] = None,
-                      status: Annotated[Optional[Status] | None, Field(                       # pyright: ignore[reportInvalidTypeForm]
+                      status: Annotated[Optional[Status] | None, Field(                # pyright: ignore[reportInvalidTypeForm]
                           description=get_doc("list_titles", param="status")
                       )] = None,
                       db: AsyncSession = Depends(get_fastmcp_db)) -> list[items_schema.ItemResponse]:
