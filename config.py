@@ -42,5 +42,6 @@ class Settings(BaseSettings):
     huutoapp_mcp_idp_audience: str | None = None
     huutoapp_mcp_server_url: HttpUrl | None = None
     huutoapp_mcp_tool_docs_path: str | None = None
+    huutoapp_mcp_perform_auth: bool = False
 
 settings = Settings() # type: ignore # Loaded from .env file

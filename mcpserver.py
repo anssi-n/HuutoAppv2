@@ -22,25 +22,39 @@ from mcp_utils import get_doc, get_literal
 HELSINKI = ZoneInfo("Europe/Helsinki")
 UTC = ZoneInfo("UTC")
 
-token_verifier = JWTVerifier(
-    jwks_uri=f"{settings.huutoapp_mcp_idp_url}/realms/{settings.huutoapp_mcp_idp_realm}/protocol/openid-connect/certs",
-    issuer=f"{settings.huutoapp_mcp_idp_url}/realms/{settings.huutoapp_mcp_idp_realm}",
-    audience=settings.huutoapp_mcp_idp_audience
-)
+if settings.huutoapp_mcp_perform_auth:
+    logger.info("MCP Server performs authentication & authorization")
+    token_verifier = JWTVerifier(
+        jwks_uri=f"{settings.huutoapp_mcp_idp_url}/realms/{settings.huutoapp_mcp_idp_realm}/protocol/openid-connect/certs",
+        issuer=f"{settings.huutoapp_mcp_idp_url}/realms/{settings.huutoapp_mcp_idp_realm}",
+        audience=settings.huutoapp_mcp_idp_audience
+    )
 
-auth = RemoteAuthProvider(
-    token_verifier=token_verifier,
-    authorization_servers=[AnyHttpUrl(f"{settings.huutoapp_mcp_idp_url}/realms/{settings.huutoapp_mcp_idp_realm}")],
-    base_url=settings.huutoapp_mcp_server_url,
-)
+    auth = RemoteAuthProvider(
+        token_verifier=token_verifier,
+        authorization_servers=[AnyHttpUrl(f"{settings.huutoapp_mcp_idp_url}/realms/{settings.huutoapp_mcp_idp_realm}")],
+        base_url=settings.huutoapp_mcp_server_url,
+    )
 
-logger.info(f"AuthN & AuthZ: authorization server={AnyHttpUrl(f"{settings.huutoapp_mcp_idp_url}/realms/{settings.huutoapp_mcp_idp_realm}")}")
-logger.info(f"AuthN & AuthZ: JWKS URL={settings.huutoapp_mcp_idp_url}/realms/{settings.huutoapp_mcp_idp_realm}/protocol/openid-connect/certs")
-logger.info(f"AuthN & AuthZ: Issuer={settings.huutoapp_mcp_idp_url}/realms/{settings.huutoapp_mcp_idp_realm}")
-logger.info(f"AuthN & AuthZ: Audience={settings.huutoapp_mcp_idp_audience}")
-logger.info(f"AuthN & AuthZ: MCP Server base url: {settings.huutoapp_mcp_server_url}")
+    logger.info(f"AuthN & AuthZ: authorization server={AnyHttpUrl(f"{settings.huutoapp_mcp_idp_url}/realms/{settings.huutoapp_mcp_idp_realm}")}")
+    logger.info(f"AuthN & AuthZ: JWKS URL={settings.huutoapp_mcp_idp_url}/realms/{settings.huutoapp_mcp_idp_realm}/protocol/openid-connect/certs")
+    logger.info(f"AuthN & AuthZ: Issuer={settings.huutoapp_mcp_idp_url}/realms/{settings.huutoapp_mcp_idp_realm}")
+    logger.info(f"AuthN & AuthZ: Audience={settings.huutoapp_mcp_idp_audience}")
+    logger.info(f"AuthN & AuthZ: MCP Server base url: {settings.huutoapp_mcp_server_url}")
 
-mcp = FastMCP("HuutoApp MCP Server", auth=auth)
+    mcp = FastMCP("HuutoApp MCP Server", auth=auth)
+
+    list_titles_auth = require_scopes("mcp:huutoapp:public")
+    search_titles_auth = require_scopes("mcp:huutoapp:public")
+    admin_tool_auth = require_scopes("mcp:huutoapp:admin")
+
+else:
+    logger.info("MCP Server doesn't perform authentication & authorization")
+    list_titles_auth = None
+    search_titles_auth = None
+    admin_tool_auth = None
+    mcp = FastMCP("HuutoApp MCP Server")
+
 @mcp.lifespan()
 async def app_lifespan():
     try:
@@ -52,7 +66,7 @@ MediaFormat = Literal[*get_literal(literal_name="media_format")]
 Condition = Literal[*get_literal(literal_name="condition")]
 Status = Literal[*get_literal(literal_name="status")]
 
-@mcp.tool(auth=require_scopes("mcp:huutoapp:public"),
+@mcp.tool(auth=list_titles_auth,
           description=get_doc("list_titles"),)
 async def list_titles(*,
                       media_format: Annotated[Optional[MediaFormat], Field(            # pyright: ignore[reportInvalidTypeForm]
@@ -101,8 +115,8 @@ async def list_titles(*,
     items = [items_schema.ItemResponse.model_validate(item) for item in result.scalars().all()]
     return items
 
-@mcp.tool(auth=require_scopes("mcp:huutoapp:public"),
-          description=get_doc("search_titles"),) 
+@mcp.tool(auth=search_titles_auth,
+           description=get_doc("search_titles"),) 
 async def search_titles(search_criteria: Annotated[str, 
                                                    Field(
                                                        description=get_doc("search_titles", param="search_criteria"),
@@ -128,6 +142,14 @@ async def search_titles(search_criteria: Annotated[str,
     result = await db.execute(select_stm)
     items = [items_schema.ItemResponse.model_validate(item) for item in result.scalars().all()]
     return items
+
+@mcp.tool(auth=admin_tool_auth,
+           description="Dummy tool to test admin access",) 
+async def admin_tool(db: AsyncSession = Depends(get_fastmcp_db))  -> dict[str,str]:
+
+    logger.info(f"Tool call: name=admin_tool")
+    return {"response": "Hello from admin tool!"}
+
 
 @mcp.custom_route("/health", methods=["GET"]) 
 async def liveness(_: Request) -> PlainTextResponse:

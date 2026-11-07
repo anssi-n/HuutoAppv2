@@ -19,7 +19,7 @@ def get_jwt(client_id: str, client_secret: str, scopes: list[str]) -> str:
         }
         response = httpx.post(url, data=payload, verify=False)
         token_data = response.json()
-
+        print(f"{response.status_code=}")
         if response.status_code != 200:
             return ""        
 
@@ -47,5 +47,7 @@ async def main():
             result = await client.call_tool("search_titles", {"search_criteria": "Bronson"})
             print(f"Tool search_titles result: {result}")
 
+            result = await client.call_tool("admin_tool", {})
+            print(f"Tool admin_tool result: {result}")
 if __name__ == "__main__":
     asyncio.run(main())
