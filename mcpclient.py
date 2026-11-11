@@ -4,11 +4,16 @@ import httpx2 as httpx
 import os
 
 CLIENT_ID = "mcp:huutoapp:admin"
+#CLIENT_ID = "mcp:huutoapp:public"
 CLIENT_SECRET = os.environ.get("CLIENT_SECRET")
 SCOPES = ["mcp:huutoapp:public", "mcp:huutoapp:admin"]
+#SCOPES = ["mcp:huutoapp:public"]
 
 def get_jwt(client_id: str, client_secret: str, scopes: list[str]) -> str:
 
+    print(f"{CLIENT_ID=}")
+    print(f"{CLIENT_SECRET=}")
+    print(f"{SCOPES=}")
     with httpx.Client() as client:
         url = "https://keycloak.anyman.homelab:8443/realms/homelab/protocol/openid-connect/token"
         payload = {
@@ -33,6 +38,7 @@ async def main():
 
     if jwt := get_jwt(CLIENT_ID, CLIENT_SECRET, SCOPES):
         async with Client("http://localhost:8000/mcp", auth=jwt) as client:
+        #async with Client("https://huutoapp.mcp.anyman.homelab/mcp", auth=jwt) as client:
             tools = await client.list_tools()
             print(f"Tools: {[t.name for t in tools]}")
 
@@ -41,13 +47,13 @@ async def main():
                 print(t.name)
                 print(t.description)
 
-            result = await client.call_tool("list_titles", {"condition": "like-new", "status": "open"})
-            print(f"Tool list_titles result: {result}")
+            result = await client.call_tool("relist_closed_item", {"item_database_id": 765, "add_keywords": False})
+            print(f"Tool publish_draft_item result: {result}")
 
-            result = await client.call_tool("search_titles", {"search_criteria": "Bronson"})
-            print(f"Tool search_titles result: {result}")
+            #result = await client.call_tool("search_titles", {"search_criteria": "hud 4k"})
+            #print(f"Tool search_titles result: {result}")
 
-            result = await client.call_tool("admin_tool", {})
-            print(f"Tool admin_tool result: {result}")
+            # result = await client.call_tool("admin_tool", {})
+            # print(f"Tool admin_tool result: {result}")
 if __name__ == "__main__":
     asyncio.run(main())

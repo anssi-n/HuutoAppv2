@@ -45,3 +45,35 @@ tools:
         Keyword or free-text search query. Matched against title, description, keywords, cast and crew, genre, 
         release year and physical media labels.
         Examples: 'charles bronson', '1974', 'film-noir', 'criterion'.
+
+  publish_draft_title:
+    description: >
+      Publish a draft title to Huuto.net.
+
+      The title must currently be in draft status (use list_titles with status="draft" to find candidates).
+      Publishing makes the listing publicly visible and changes its status to open.
+      When the title is successfully published by the background worker, huuto_id and huuto_closing_time are set (previously null).
+      Optionally includes keywords in the published title when add_keywords is true.
+    parameters:
+      title_id: >
+        Database ID of the title to publish.
+        Obtain this value from the list_titles tool (the 'id' field of a matching item).
+      add_keywords: >
+        When true, include the title's keywords in the published listing on Huuto.net.
+        When false, publish without adding keywords.
+
+  republish_title:
+    description: >
+      Republish an existing title (open or closed) to Huuto.net.
+
+      Use this for titles that are already published or closed. It refreshes the listing on Huuto.net and keeps (or restores) it in the open state.
+      The title must not be in draft status (use list_titles with status="open" or status="closed" to find candidates).
+      When the title is successfully republished by the background worker, huuto_id and huuto_closing_time are updated with new values.
+      Optionally includes keywords in the republished title when add_keywords is true.
+    parameters:
+      title_id: >
+        Database ID of the title to republish.
+        Obtain this value from the list_titles tool (the 'id' field of a matching item).
+      add_keywords: >
+        When true, include the title's keywords in the republished listing on Huuto.net.
+        When false, republish without adding keywords.

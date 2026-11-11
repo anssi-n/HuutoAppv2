@@ -26,7 +26,7 @@ class CsvFile(BaseModel):
         return result
 
 class PublishResponse(BaseModel):
-    task_id: int
+    task_id: int | None = None
     title: str | None = None
     item_id: int | None = None
 

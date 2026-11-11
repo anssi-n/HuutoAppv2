@@ -27,7 +27,7 @@ huutoworker = [
 ]
 huutomcp = [
     "httpx2>=2.16.0",
-    "fastmcp>=4.1.6",
+    "fastmcp>=4.1.8",
 ]
 
 [dependency-groups]

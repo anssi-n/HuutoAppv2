@@ -455,9 +455,6 @@ async def relist_item(item_id: int,
     if item.huuto_closing_time is None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Item is not yet published to Huuto.net. Unable to relist.")
 
-    # if item.huuto_closing_time > datetime.now(UTC):
-    #     raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Item is still active in Huuto.net.")
-
     task_id = await create_queue_msg(
         item.id,
         common_types.TaskType.RelistItem,

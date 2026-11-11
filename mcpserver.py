@@ -1,7 +1,11 @@
 from db import get_fastmcp_db, engine
+from redis_queue import get_redis, redis_client
+from common import common_types
+from redis.asyncio import Redis
 from models import items_model
 from schemas import items_schema
-from typing import Annotated, Literal, Optional
+from typing import Annotated, Literal, Optional, Callable
+from functools import wraps
 from datetime import datetime, UTC
 from zoneinfo import ZoneInfo
 from pydantic import Field, AnyHttpUrl
@@ -9,7 +13,9 @@ from sqlalchemy import select, func, desc, and_, or_, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from fastmcp import FastMCP
+from fastmcp.server.lifespan import lifespan
 from fastmcp.dependencies import Depends
+from fastmcp.exceptions import ToolError
 from fastmcp.server.auth import require_scopes
 from fastmcp.server.auth.providers.jwt import JWTVerifier
 from fastmcp.server.auth import RemoteAuthProvider
@@ -18,6 +24,7 @@ from starlette.responses import JSONResponse, PlainTextResponse
 from config import settings
 from logger import logger
 from mcp_utils import get_doc, get_literal
+from routers.items_route import create_queue_msg
 
 HELSINKI = ZoneInfo("Europe/Helsinki")
 UTC = ZoneInfo("UTC")
@@ -42,32 +49,44 @@ if settings.huutoapp_mcp_perform_auth:
     logger.info(f"AuthN & AuthZ: Audience={settings.huutoapp_mcp_idp_audience}")
     logger.info(f"AuthN & AuthZ: MCP Server base url: {settings.huutoapp_mcp_server_url}")
 
-    mcp = FastMCP("HuutoApp MCP Server", auth=auth)
-
-    list_titles_auth = require_scopes("mcp:huutoapp:public")
-    search_titles_auth = require_scopes("mcp:huutoapp:public")
-    admin_tool_auth = require_scopes("mcp:huutoapp:admin")
+    auth=auth
+    public_tool_auth = require_scopes(settings.public_tool_scope)
+    admin_tool_auth = require_scopes(settings.admin_tool_scope)
 
 else:
     logger.info("MCP Server doesn't perform authentication & authorization")
-    list_titles_auth = None
-    search_titles_auth = None
+    auth=None
+    public_tool_auth = None
     admin_tool_auth = None
-    mcp = FastMCP("HuutoApp MCP Server")
 
-@mcp.lifespan()
-async def app_lifespan():
+def log_toolcall(fn: Callable) -> Callable:
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        arguments = ", ".join([f"{k}={v}" for k,v in kwargs.items() if (not isinstance(v, Redis) and not isinstance(v, AsyncSession))])
+        logger.info(f"Tool call: name={fn.__qualname__}, {arguments=}")
+        return fn(*args, **kwargs)
+    return wrapper
+
+@lifespan
+async def app_lifespan(server):
     try:
-        yield 
+        await redis_client.connect()
+        yield {} 
     finally:
         await engine.dispose()
+        await redis_client.disconnect() 
+
+mcp = FastMCP("HuutoApp MCP Server", 
+              auth=auth,
+              lifespan=app_lifespan)
 
 MediaFormat = Literal[*get_literal(literal_name="media_format")]
 Condition = Literal[*get_literal(literal_name="condition")]
 Status = Literal[*get_literal(literal_name="status")]
 
-@mcp.tool(auth=list_titles_auth,
+@mcp.tool(auth=public_tool_auth,
           description=get_doc("list_titles"),)
+@log_toolcall
 async def list_titles(*,
                       media_format: Annotated[Optional[MediaFormat], Field(            # pyright: ignore[reportInvalidTypeForm]
                           description=get_doc("list_titles", param="media_format")
@@ -80,7 +99,6 @@ async def list_titles(*,
                       )] = None,
                       db: AsyncSession = Depends(get_fastmcp_db)) -> list[items_schema.ItemResponse]:
 
-    logger.info(f"Tool call: name=list_titles, {media_format=}, {condition=}, {status=}")
     select_stm = select(items_model.HuutoItem).options(selectinload(items_model.HuutoItem.shipping),
                                       selectinload(items_model.HuutoItem.country),
                                       selectinload(items_model.HuutoItem.subtitle),
@@ -115,17 +133,17 @@ async def list_titles(*,
     items = [items_schema.ItemResponse.model_validate(item) for item in result.scalars().all()]
     return items
 
-@mcp.tool(auth=search_titles_auth,
-           description=get_doc("search_titles"),) 
-async def search_titles(search_criteria: Annotated[str, 
+@mcp.tool(auth=public_tool_auth,
+          description=get_doc("search_titles"),) 
+@log_toolcall
+async def search_titles(*,
+                        search_criteria: Annotated[str, 
                                                    Field(
                                                        description=get_doc("search_titles", param="search_criteria"),
                                                        min_length=1,
                                                        max_length=20,
                                                    )],
                         db: AsyncSession = Depends(get_fastmcp_db))  -> list[items_schema.ItemResponse]:
-
-    logger.info(f"Tool call: name=search_titles, {search_criteria=}")
 
     select_stm = select(items_model.HuutoItem).options(selectinload(items_model.HuutoItem.shipping),
                                       selectinload(items_model.HuutoItem.country),
@@ -144,11 +162,74 @@ async def search_titles(search_criteria: Annotated[str,
     return items
 
 @mcp.tool(auth=admin_tool_auth,
-           description="Dummy tool to test admin access",) 
-async def admin_tool(db: AsyncSession = Depends(get_fastmcp_db))  -> dict[str,str]:
+          description=get_doc("publish_draft_title")) 
+@log_toolcall
+async def publish_draft_title(*,
+                             title_id: Annotated[int, 
+                                                   Field(
+                                                       description=get_doc("publish_draft_title", param="title_id")
+                                                   )],
+                             add_keywords: Annotated[bool, 
+                                                   Field(
+                                                       description=get_doc("publish_draft_title", param="add_keywords")
+                                                   )],
+                             redis: Redis = Depends(get_redis),
+                             db: AsyncSession = Depends(get_fastmcp_db))  -> items_schema.PublishResponse:
 
-    logger.info(f"Tool call: name=admin_tool")
-    return {"response": "Hello from admin tool!"}
+    result = await db.execute(select(items_model.HuutoItem).where(items_model.HuutoItem.id == title_id))
+    item = result.scalars().first()
+
+    if item is None:
+        raise ToolError(f"No title found with title id {title_id}.")
+
+    if item.huuto_id is not None:
+        raise ToolError(f"Title with title id {title_id} is not in draft state. It already has huuto_id {item.huuto_id}.")
+
+    task_id = await create_queue_msg(
+        item.id,
+        common_types.TaskType.AddItem,
+        int(add_keywords),
+        {"item_id": item.id},
+        db,
+        redis
+    )
+
+    return items_schema.PublishResponse(task_id=task_id, item_id=item.id, title=item.title)
+
+@mcp.tool(auth=admin_tool_auth,
+          description=get_doc("republish_title")) 
+@log_toolcall
+async def republish_title(*,
+                          title_id: Annotated[int, 
+                                                   Field(
+                                                       description=get_doc("republish_title", param="title_id")
+                                                   )],
+                          add_keywords: Annotated[bool, 
+                                                   Field(
+                                                       description=get_doc("republish_title", param="add_keywords")
+                                                   )],
+                          redis: Redis = Depends(get_redis),
+                          db: AsyncSession = Depends(get_fastmcp_db))  -> items_schema.PublishResponse:
+
+    result = await db.execute(select(items_model.HuutoItem).where(items_model.HuutoItem.id == title_id))
+    item = result.scalars().first()
+
+    if item is None:
+        raise ToolError(f"No title found with title id {title_id}.")
+
+    if item.huuto_closing_time is None:
+        raise ToolError(f"Title with title id {title_id} is not yet published to Huuto.net. Unable to republish.")
+
+    task_id = await create_queue_msg(
+        item.id,
+        common_types.TaskType.RelistItem,
+        int(add_keywords),
+        {"item_id": item.id},
+        db,
+        redis
+    )
+
+    return items_schema.PublishResponse(task_id=task_id, item_id=item.id, title=item.title)
 
 
 @mcp.custom_route("/health", methods=["GET"]) 
